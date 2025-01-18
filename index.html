@@ -106,6 +106,7 @@
         <span id="user-status">Statut : Non connecté</span>
         <button id="auth-button">Connexion</button>
     </div>
+
     <div class="modal" id="auth-modal">
         <div class="modal-content">
             <h2>Connexion</h2>
@@ -120,7 +121,17 @@
             <button class="close" id="close-modal">Fermer</button>
         </div>
     </div>
+
     <h1>Bibliothèque</h1>
+    <div id="add-book-section" style="display: none; margin-bottom: 20px;">
+        <h2>Ajouter un livre</h2>
+        <label for="book-title">Titre</label>
+        <input type="text" id="book-title" placeholder="Titre">
+        <label for="book-author">Auteur</label>
+        <input type="text" id="book-author" placeholder="Auteur">
+        <button id="add-book-button">Ajouter</button>
+    </div>
+
     <button id="show-books">Afficher les livres</button>
     <button id="clear-books">Effacer la liste</button>
     <div>
