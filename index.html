@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bibliothèque</title>
+    <style>
+        #books-list, #search-results {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #ccc;
+            text-align: left;
+        }
+        .disponible {
+            color: green;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Bibliothèque</h1>
+    <button id="show-books">Afficher les livres</button>
+    <button id="clear-books">Effacer la liste</button>
+
+    <div>
+        <h2>Recherche</h2>
+        <label>
+            Rechercher par auteur :
+            <input type="text" id="search-author">
+        </label>
+        <button id="search-author-btn">Lancer la recherche</button>
+        <br><br>
+        <label>
+            Rechercher par titre :
+            <input type="text" id="search-title">
+        </label>
+        <button id="search-title-btn">Lancer la recherche</button>
+    </div>
+
+    <div id="books-list"></div>
+    <div id="search-results"></div>
+    <script src="script.js"></script>
+</body>
+</html>
