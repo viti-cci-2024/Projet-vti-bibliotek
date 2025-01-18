@@ -1,5 +1,10 @@
 [
-    { "titre": "Dune", "auteur": "Frank Herbert", "etat": "Disponible" },
+    { 
+        "titre": "Dune", 
+        "auteur": "Frank Herbert", 
+        "etat": "Emprunté",
+        "emprunteur": "Jean Brouille"
+    },
     { "titre": "1984", "auteur": "George Orwell", "etat": "Disponible" },
     { "titre": "Le Meilleur des Mondes", "auteur": "Aldous Huxley", "etat": "Disponible" },
     { "titre": "Fahrenheit 451", "auteur": "Ray Bradbury", "etat": "Disponible" },

@@ -43,8 +43,11 @@ const displayBooks = (books) => {
         const tdEtat = document.createElement("td");
         tdEtat.textContent = book.etat;
 
+        // Ajoute une classe en fonction de l'état
         if (book.etat === "Disponible") {
             tdEtat.classList.add("disponible");
+        } else if (book.etat === "Emprunté") {
+            tdEtat.classList.add("emprunte");
         }
 
         tr.appendChild(tdTitre);
@@ -112,3 +115,87 @@ searchTitleButton.addEventListener("click", async () => {
         searchResultsDiv.textContent = `Erreur : ${error.message}`;
     }
 });
+
+// Récupération des éléments HTML
+const authButton = document.getElementById("auth-button");
+const authModal = document.getElementById("auth-modal");
+const closeModalButton = document.getElementById("close-modal");
+const loginButton = document.getElementById("login-button");
+const userStatus = document.getElementById("user-status");
+const authError = document.getElementById("auth-error");
+
+// Vérifie si un utilisateur est connecté
+const updateUserStatus = () => {
+    const user = JSON.parse(localStorage.getItem("connectedUser"));
+    if (user) {
+        userStatus.textContent = `${user.nom} ${user.prenom} - ${user.statut} - Statut : Connecté`;
+        userStatus.classList.add("connected");
+        authButton.textContent = "Se déconnecter";
+    } else {
+        userStatus.textContent = "Statut : Non connecté";
+        userStatus.classList.remove("connected");
+        authButton.textContent = "Connexion";
+    }
+};
+
+// Gestion de la connexion
+const login = async () => {
+    const name = document.getElementById("auth-name").value.trim();
+    const firstname = document.getElementById("auth-firstname").value.trim();
+    const password = document.getElementById("auth-password").value;
+
+    if (!name || !firstname || !password) {
+        authError.textContent = "Tous les champs sont obligatoires.";
+        return;
+    }
+
+    try {
+        const response = await fetch("membres.json");
+        if (!response.ok) throw new Error("Impossible de charger les données.");
+        const membres = await response.json();
+        console.log(membres);
+
+        const user = membres.find(
+            m => m.nom.toLowerCase() === name.toLowerCase() &&
+                 m.prenom.toLowerCase() === firstname.toLowerCase() &&
+                 m.motDePasse === password
+        );
+
+        if (user) {
+            localStorage.setItem("connectedUser", JSON.stringify(user));
+            authModal.style.display = "none";
+            updateUserStatus();
+        } else {
+            authError.textContent = "Identifiants incorrects.";
+        }
+    } catch (error) {
+        authError.textContent = `Erreur : ${error.message}`;
+    }
+};
+
+
+// Déconnexion
+const logout = () => {
+    localStorage.removeItem("connectedUser");
+    updateUserStatus();
+};
+
+// Gestion de la modale
+authButton.addEventListener("click", () => {
+    const isConnected = !!localStorage.getItem("connectedUser");
+    if (isConnected) {
+        logout();
+    } else {
+        authModal.style.display = "flex";
+    }
+});
+
+closeModalButton.addEventListener("click", () => {
+    authModal.style.display = "none";
+    authError.textContent = "";
+});
+
+loginButton.addEventListener("click", login);
+
+// Met à jour le statut à chaque chargement
+updateUserStatus();
