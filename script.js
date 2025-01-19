@@ -36,35 +36,6 @@ const editAuthorInput = document.getElementById("edit-author");
 const editErrorDiv = document.getElementById("edit-error");
 let bookToEdit = null; 
 
-// RÉCUPÉRATION DU BOUTON "clear-data-button"
-const clearDataButton = document.getElementById("clear-data-button");
-
-// Écouteur pour tout effacer
-clearDataButton.addEventListener("click", () => {
-  if (!confirm("Êtes-vous sûr de vouloir VIDER TOUTES LES DONNÉES (localStorage, sessionStorage, IndexedDB) ?")) {
-    return; // annule si l’utilisateur clique sur "Annuler"
-  }
-
-  // 1) Vider localStorage & sessionStorage
-  localStorage.clear();
-  sessionStorage.clear();
-  console.log("LocalStorage et SessionStorage vidés.");
-
-  // 2) Supprimer la base IndexedDB
-  const deleteRequest = indexedDB.deleteDatabase("Bibliotheque");
-  
-  deleteRequest.onsuccess = () => {
-    console.log("Base IndexedDB 'Bibliotheque' supprimée avec succès !");
-    alert("Toutes les données de test ont été supprimées.\nRechargez la page pour repartir de zéro.");
-  };
-
-  deleteRequest.onerror = () => {
-    console.error("Erreur lors de la suppression de la base IndexedDB :", deleteRequest.error);
-    alert("Une erreur est survenue lors de la suppression de la base IndexedDB.");
-  };
-});
-
-
 
 /**
  * =========================
