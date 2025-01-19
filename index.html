@@ -108,6 +108,7 @@
         <button id="auth-button">Connexion</button>
     </div>
 
+    <!-- Modale de Connexion -->
     <div class="modal" id="auth-modal">
         <div class="modal-content">
             <h2>Connexion</h2>
@@ -120,6 +121,20 @@
             <input type="password" id="auth-password" placeholder="Mot de passe">
             <button id="login-button">Se connecter</button>
             <button class="close" id="close-modal">Fermer</button>
+        </div>
+    </div>
+
+    <!-- Modale de Modification de Livre -->
+    <div class="modal" id="edit-modal">
+        <div class="modal-content">
+            <h2>Modifier le Livre</h2>
+            <div id="edit-error" class="error"></div>
+            <label for="edit-title">Titre</label>
+            <input type="text" id="edit-title" placeholder="Nouveau titre">
+            <label for="edit-author">Auteur</label>
+            <input type="text" id="edit-author" placeholder="Nouvel auteur">
+            <button id="validate-edit-button">Valider</button>
+            <button class="close" id="close-edit-modal">Quitter</button>
         </div>
     </div>
 

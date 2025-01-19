@@ -22,6 +22,15 @@ const bookAuthorInput = document.getElementById("book-author");
 let isConnected = false;
 let currentUser = { nom: "", prenom: "" };
 
+// Variables pour la modification de livre
+const editModal = document.getElementById("edit-modal");
+const closeEditModalButton = document.getElementById("close-edit-modal");
+const validateEditButton = document.getElementById("validate-edit-button");
+const editTitleInput = document.getElementById("edit-title");
+const editAuthorInput = document.getElementById("edit-author");
+const editErrorDiv = document.getElementById("edit-error");
+let bookToEdit = null; // Objet du livre en cours de modification
+
 // Fonction pour mettre à jour le bouton d'authentification
 const updateAuthButton = () => {
     if (isConnected) {
@@ -72,7 +81,12 @@ const loadInitialBooks = async (db) => {
             booksStore.put(book);
         });
 
-        await transaction.complete;
+        // Attendre la fin de la transaction
+        await new Promise((resolve, reject) => {
+            transaction.oncomplete = resolve;
+            transaction.onerror = () => reject(transaction.error);
+        });
+
         console.log("Livres chargés avec succès.");
     } catch (error) {
         console.error("Erreur lors du chargement des livres :", error);
@@ -92,7 +106,12 @@ const loadInitialMembers = async (db) => {
             membersStore.put(member);
         });
 
-        await transaction.complete;
+        // Attendre la fin de la transaction
+        await new Promise((resolve, reject) => {
+            transaction.oncomplete = resolve;
+            transaction.onerror = () => reject(transaction.error);
+        });
+
         console.log("Membres chargés avec succès.");
     } catch (error) {
         console.error("Erreur lors du chargement des membres :", error);
@@ -130,22 +149,38 @@ const searchData = async (db, storeName, field, query) => {
 };
 
 // Mise à jour d'un livre dans IndexedDB
-const updateBook = async (db, book) => {
+const updateBook = async (db, oldTitle, updatedBook) => {
     return new Promise((resolve, reject) => {
         const transaction = db.transaction("books", "readwrite");
         const booksStore = transaction.objectStore("books");
 
-        const request = booksStore.put(book);
-
-        request.onsuccess = () => {
-            console.log("Livre mis à jour :", book);
-            resolve();
-        };
-
-        request.onerror = () => {
-            console.error("Erreur lors de la mise à jour du livre :", request.error);
-            reject(request.error);
-        };
+        // Supprimer l'ancien enregistrement si le titre a changé
+        if (oldTitle !== updatedBook.titre) {
+            booksStore.delete(oldTitle).onsuccess = () => {
+                booksStore.put(updatedBook).onsuccess = () => {
+                    console.log("Livre mis à jour :", updatedBook);
+                    resolve();
+                };
+                booksStore.put(updatedBook).onerror = () => {
+                    console.error("Erreur lors de la mise à jour du livre :", booksStore.error);
+                    reject(booksStore.error);
+                };
+            };
+            booksStore.delete(oldTitle).onerror = () => {
+                console.error("Erreur lors de la suppression de l'ancien livre :", booksStore.error);
+                reject(booksStore.error);
+            };
+        } else {
+            // Si le titre n'a pas changé, mettre à jour directement
+            booksStore.put(updatedBook).onsuccess = () => {
+                console.log("Livre mis à jour :", updatedBook);
+                resolve();
+            };
+            booksStore.put(updatedBook).onerror = () => {
+                console.error("Erreur lors de la mise à jour du livre :", booksStore.error);
+                reject(booksStore.error);
+            };
+        }
     });
 };
 
@@ -240,6 +275,7 @@ const displaySearchResults = (results, container) => {
                     <td>
                         ${book.etat === "Disponible" ? `<button class="borrow-book" data-title="${book.titre}">Emprunter</button>` : `<button class="return-book" data-title="${book.titre}">Retourner</button>`}
                         <button class="delete-book" data-title="${book.titre}">Supprimer</button>
+                        <button class="edit-book" data-title="${book.titre}">Modifier</button>
                     </td>
                     `
                     : ""
@@ -263,7 +299,7 @@ const displaySearchResults = (results, container) => {
                     book.etat = "Emprunté";
                     book.emprunteur = `${currentUser.prenom} ${currentUser.nom}`;
                     const db = await initializeIndexedDB();
-                    await updateBook(db, book);
+                    await updateBook(db, book.titre, book);
                     displaySearchResults(await searchData(db, "books", "titre", ""), container); // Rafraîchit les résultats
                 }
             });
@@ -280,7 +316,7 @@ const displaySearchResults = (results, container) => {
                     book.etat = "Disponible";
                     book.emprunteur = null;
                     const db = await initializeIndexedDB();
-                    await updateBook(db, book);
+                    await updateBook(db, book.titre, book);
                     displaySearchResults(await searchData(db, "books", "titre", ""), container); // Rafraîchit les résultats
                 }
             });
@@ -294,6 +330,24 @@ const displaySearchResults = (results, container) => {
                 const db = await initializeIndexedDB();
                 await deleteBook(db, title);
                 displaySearchResults(await searchData(db, "books", "titre", ""), container); // Rafraîchit les résultats
+            });
+        });
+
+        // Gestion des boutons "Modifier"
+        const editButtons = document.querySelectorAll(".edit-book");
+        editButtons.forEach((button) => {
+            button.addEventListener("click", async (event) => {
+                const title = event.target.getAttribute("data-title");
+                const db = await initializeIndexedDB();
+                const books = await getAllData(db, "books");
+                const book = books.find((b) => b.titre === title);
+                if (book) {
+                    bookToEdit = book; // Stocke le livre à modifier
+                    editTitleInput.value = book.titre;
+                    editAuthorInput.value = book.auteur;
+                    editErrorDiv.textContent = "";
+                    editModal.style.display = "flex";
+                }
             });
         });
     }
@@ -346,6 +400,7 @@ const displayBooks = async (db, container) => {
                     <td>
                         ${book.etat === "Disponible" ? `<button class="borrow-book" data-title="${book.titre}">Emprunter</button>` : `<button class="return-book" data-title="${book.titre}">Retourner</button>`}
                         <button class="delete-book" data-title="${book.titre}">Supprimer</button>
+                        <button class="edit-book" data-title="${book.titre}">Modifier</button>
                     </td>
                     `
                         : ""
@@ -368,7 +423,7 @@ const displayBooks = async (db, container) => {
                     if (book) {
                         book.etat = "Emprunté";
                         book.emprunteur = `${currentUser.prenom} ${currentUser.nom}`;
-                        await updateBook(db, book);
+                        await updateBook(db, book.titre, book);
                         await displayBooks(db, container); // Réaffiche les livres
                     }
                 });
@@ -384,7 +439,7 @@ const displayBooks = async (db, container) => {
                     if (book) {
                         book.etat = "Disponible";
                         book.emprunteur = null;
-                        await updateBook(db, book);
+                        await updateBook(db, book.titre, book);
                         await displayBooks(db, container); // Réaffiche les livres
                     }
                 });
@@ -397,6 +452,24 @@ const displayBooks = async (db, container) => {
                     const title = event.target.getAttribute("data-title");
                     await deleteBook(db, title);
                     await displayBooks(db, container); // Réaffiche les livres
+                });
+            });
+
+            // Gestion des boutons "Modifier"
+            const editButtons = document.querySelectorAll(".edit-book");
+            editButtons.forEach((button) => {
+                button.addEventListener("click", async (event) => {
+                    const title = event.target.getAttribute("data-title");
+                    const db = await initializeIndexedDB();
+                    const books = await getAllData(db, "books");
+                    const book = books.find((b) => b.titre === title);
+                    if (book) {
+                        bookToEdit = book; // Stocke le livre à modifier
+                        editTitleInput.value = book.titre;
+                        editAuthorInput.value = book.auteur;
+                        editErrorDiv.textContent = "";
+                        editModal.style.display = "flex";
+                    }
                 });
             });
         }
@@ -490,7 +563,7 @@ authButton.addEventListener("click", () => {
     }
 });
 
-// Fermeture de la modale
+// Fermeture de la modale de connexion
 closeModalButton.addEventListener("click", () => {
     authModal.style.display = "none";
 });
@@ -526,12 +599,67 @@ loginButton.addEventListener("click", async () => {
             authModal.style.display = "none";
             updateAuthButton(); // Met à jour le bouton d'authentification
             console.log("Utilisateur connecté :", currentUser);
+            await displayBooks(db, booksListDiv); // Affiche les livres après connexion
         } else {
             authErrorDiv.textContent = "Identifiants incorrects.";
         }
     } catch (error) {
         console.error("Erreur lors de la connexion :", error);
         authErrorDiv.textContent = "Une erreur est survenue. Veuillez réessayer.";
+    }
+});
+
+// Gestion de la modale de modification
+closeEditModalButton.addEventListener("click", () => {
+    editModal.style.display = "none";
+});
+
+validateEditButton.addEventListener("click", async () => {
+    const newTitle = editTitleInput.value.trim();
+    const newAuthor = editAuthorInput.value.trim();
+
+    if (!newTitle || !newAuthor) {
+        editErrorDiv.textContent = "Veuillez remplir tous les champs.";
+        return;
+    }
+
+    try {
+        const db = await initializeIndexedDB();
+
+        // Vérifier si le nouveau titre existe déjà et est différent de l'ancien
+        if (newTitle !== bookToEdit.titre) {
+            const existingBook = await new Promise((resolve, reject) => {
+                const transaction = db.transaction("books", "readonly");
+                const booksStore = transaction.objectStore("books");
+                const request = booksStore.get(newTitle);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+
+            if (existingBook) {
+                editErrorDiv.textContent = "Un livre avec ce titre existe déjà.";
+                return;
+            }
+        }
+
+        // Créer le livre mis à jour
+        const updatedBook = {
+            ...bookToEdit,
+            titre: newTitle,
+            auteur: newAuthor
+        };
+
+        // Mettre à jour le livre dans la base de données
+        await updateBook(db, bookToEdit.titre, updatedBook);
+
+        // Fermer la modale
+        editModal.style.display = "none";
+
+        // Réafficher la liste des livres
+        await displayBooks(db, booksListDiv);
+    } catch (error) {
+        console.error("Erreur lors de la modification du livre :", error);
+        editErrorDiv.textContent = "Erreur lors de la modification. Veuillez réessayer.";
     }
 });
 
