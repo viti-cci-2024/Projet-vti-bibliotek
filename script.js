@@ -13,6 +13,9 @@ const searchAuthorButton = document.getElementById("search-author-btn");
 const searchTitleInput = document.getElementById("search-title");
 const searchTitleButton = document.getElementById("search-title-btn");
 const searchResultsDiv = document.getElementById("search-results");
+const addBookForm = document.getElementById("add-book-form");
+const addBookButton = document.getElementById("add-book-button");
+const addBookError = document.getElementById("add-book-error");
 
 let books = [];
 
@@ -23,87 +26,126 @@ const updateUserStatus = () => {
         userStatus.textContent = `${user.nom} ${user.prenom} - ${user.statut} - Statut : Connecté`;
         userStatus.classList.add("connected");
         authButton.textContent = "Se déconnecter";
+
+        // Afficher la section d'ajout de livres uniquement si connecté
+        addBookForm.style.display = "block";
     } else {
         userStatus.textContent = "Statut : Non connecté";
         userStatus.classList.remove("connected");
         authButton.textContent = "Connexion";
+
+        // Masquer la section d'ajout de livres si non connecté
+        addBookForm.style.display = "none";
     }
 };
 
-// Fonction pour afficher les livres dans un tableau
+// Fonction pour afficher les livres
 const displayBooks = (booksToDisplay, container) => {
-    container.innerHTML = ""; // Efface le contenu précédent
+    container.innerHTML = "";
     if (booksToDisplay.length === 0) {
         container.innerHTML = "<p>Aucun résultat trouvé.</p>";
         return;
     }
 
     const table = document.createElement("table");
-
-    const thead = document.createElement("thead");
-    thead.innerHTML = `
-        <tr>
-            <th>Titre</th>
-            <th>Auteur</th>
-            <th>État</th>
-        </tr>
+    table.innerHTML = `
+        <thead>
+            <tr>
+                <th>Titre</th>
+                <th>Auteur</th>
+                <th>État</th>
+                <th>Action</th>
+            </tr>
+        </thead>
     `;
-    table.appendChild(thead);
-
     const tbody = document.createElement("tbody");
     booksToDisplay.forEach(book => {
         const tr = document.createElement("tr");
+        const user = JSON.parse(localStorage.getItem("connectedUser"));
+        const deleteButton = user
+            ? `<button onclick="deleteBook('${book.titre}')">Supprimer</button>`
+            : "";
 
         tr.innerHTML = `
             <td>${book.titre}</td>
             <td>${book.auteur}</td>
             <td class="${book.etat === "Disponible" ? "disponible" : "emprunte"}">${book.etat}</td>
+            <td>${deleteButton}</td>
         `;
         tbody.appendChild(tr);
     });
-
     table.appendChild(tbody);
     container.appendChild(table);
 };
 
-// Fonction pour récupérer les livres
-const fetchBooks = async () => {
-    try {
-        const response = await fetch("books.json");
-        books = await response.json();
+// Fonction pour ajouter un livre
+const addBook = () => {
+    const title = document.getElementById("book-title").value.trim();
+    const author = document.getElementById("book-author").value.trim();
 
-        // Efface les tableaux de résultats avant d'afficher la liste complète
-        searchResultsDiv.innerHTML = "";
-        displayBooks(books, booksListDiv);
-    } catch (error) {
-        console.error("Erreur lors du chargement des livres :", error);
+    if (!title || !author) {
+        addBookError.textContent = "Veuillez remplir tous les champs.";
+        return;
     }
+
+    const user = JSON.parse(localStorage.getItem("connectedUser"));
+    if (!user) {
+        addBookError.textContent = "Vous devez être connecté pour ajouter un livre.";
+        return;
+    }
+
+    const newBook = {
+        titre: title,
+        auteur: author,
+        etat: "Disponible"
+    };
+
+    books.push(newBook);
+    displayBooks(books, booksListDiv);
+    addBookError.textContent = "";
+    document.getElementById("book-title").value = "";
+    document.getElementById("book-author").value = "";
 };
 
-// Fonction pour rechercher par auteur
+addBookButton.addEventListener("click", addBook);
+
+// Fonction pour supprimer un livre
+const deleteBook = (title) => {
+    const user = JSON.parse(localStorage.getItem("connectedUser"));
+    if (!user) {
+        alert("Vous devez être connecté pour supprimer un livre.");
+        return;
+    }
+
+    books = books.filter(book => book.titre !== title);
+
+    // Réaffiche les livres après suppression
+    displayBooks(books, booksListDiv);
+
+    const searchQueryAuthor = searchAuthorInput.value.trim().toLowerCase();
+    const searchQueryTitle = searchTitleInput.value.trim().toLowerCase();
+    if (searchQueryAuthor) searchByAuthor();
+    if (searchQueryTitle) searchByTitle();
+};
+
+// Recherche par auteur
 const searchByAuthor = () => {
     const query = searchAuthorInput.value.trim().toLowerCase();
-    booksListDiv.innerHTML = ""; // Efface la liste des livres affichés
-    searchResultsDiv.innerHTML = ""; // Efface les résultats précédents
+    booksListDiv.innerHTML = "";
+    searchResultsDiv.innerHTML = "";
 
     const results = books.filter(book => book.auteur.toLowerCase().includes(query));
     displayBooks(results, searchResultsDiv);
 };
 
-// Fonction pour rechercher par titre
+// Recherche par titre
 const searchByTitle = () => {
     const query = searchTitleInput.value.trim().toLowerCase();
-    booksListDiv.innerHTML = ""; // Efface la liste des livres affichés
-    searchResultsDiv.innerHTML = ""; // Efface les résultats précédents
+    booksListDiv.innerHTML = "";
+    searchResultsDiv.innerHTML = "";
 
     const results = books.filter(book => book.titre.toLowerCase().includes(query));
     displayBooks(results, searchResultsDiv);
-};
-
-// Fonction pour effacer tout
-const clearDisplay = () => {
-    booksListDiv.innerHTML = "";
-    searchResultsDiv.innerHTML = "";
 };
 
 // Connexion
@@ -144,12 +186,10 @@ const login = async () => {
 const logout = () => {
     localStorage.removeItem("connectedUser");
     updateUserStatus();
-
-    // Efface les résultats de recherche et la liste après déconnexion
     clearDisplay();
 };
 
-// Ouverture/fermeture de la modale
+// Afficher ou masquer la modale
 authButton.addEventListener("click", () => {
     const isConnected = !!localStorage.getItem("connectedUser");
     if (isConnected) logout();
@@ -163,11 +203,19 @@ closeModalButton.addEventListener("click", () => {
 
 loginButton.addEventListener("click", login);
 
-// Événements
-showBooksButton.addEventListener("click", fetchBooks);
-clearBooksButton.addEventListener("click", clearDisplay);
-searchAuthorButton.addEventListener("click", searchByAuthor);
-searchTitleButton.addEventListener("click", searchByTitle);
-
 // Initialisation
 updateUserStatus();
+
+showBooksButton.addEventListener("click", async () => {
+    const response = await fetch("books.json");
+    books = await response.json();
+    displayBooks(books, booksListDiv);
+});
+
+clearBooksButton.addEventListener("click", () => {
+    booksListDiv.innerHTML = "";
+    searchResultsDiv.innerHTML = "";
+});
+
+searchAuthorButton.addEventListener("click", searchByAuthor);
+searchTitleButton.addEventListener("click", searchByTitle);

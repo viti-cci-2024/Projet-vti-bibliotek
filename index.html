@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bibliothèque</title>
     <style>
+        /* Votre style existant reste inchangé */
         body {
             font-family: Arial, sans-serif;
             margin: 0;
@@ -138,6 +139,17 @@
             <input type="text" id="search-title">
         </label>
         <button id="search-title-btn">Lancer la recherche</button>
+    </div>
+    <div>
+        <h2>Ajouter un Livre</h2>
+        <div id="add-book-form">
+            <label for="book-title">Titre :</label>
+            <input type="text" id="book-title" placeholder="Titre du livre">
+            <label for="book-author">Auteur :</label>
+            <input type="text" id="book-author" placeholder="Auteur du livre">
+            <button id="add-book-button">Ajouter le Livre</button>
+            <div id="add-book-error" class="error"></div>
+        </div>
     </div>
     <div id="books-list"></div>
     <div id="search-results"></div>
