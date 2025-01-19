@@ -1,6 +1,4 @@
 // membres.js
-console.log("isConnected:", localStorage.getItem("isConnected"));
-console.log("currentUser:", localStorage.getItem("currentUser"));
 
 // Références DOM
 const membersListDiv = document.getElementById("members-list");
@@ -14,9 +12,6 @@ const memberStatutSelect = document.getElementById("member-statut");
 const memberPasswordInput = document.getElementById("member-password");
 const saveMemberButton = document.getElementById("save-member-button");
 const closeMemberModalButton = document.getElementById("close-member-modal");
-const userStatusSpan = document.getElementById("user-status");
-const authButton = document.getElementById("auth-button");
-const homeButton = document.getElementById("home-button");
 
 // Variables pour suivre l'état de la modale
 let isEditing = false;
@@ -53,10 +48,6 @@ function displayErrors(errors, container) {
         ul.appendChild(li);
     });
     container.appendChild(ul);
-
-    // Optionnel : focus sur la zone d’erreur
-    container.setAttribute("tabindex", "-1");
-    container.focus();
 }
 
 /**
@@ -66,15 +57,13 @@ function displayErrors(errors, container) {
  */
 const initializeIndexedDB = async () => {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open("Bibliotheque", 2); // même version que script.js
+        const request = indexedDB.open("Bibliotheque", 2);
 
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
-            if (!db.objectStoreNames.contains("books")) {
-                db.createObjectStore("books", { keyPath: "titre" });
-            }
             if (!db.objectStoreNames.contains("members")) {
                 db.createObjectStore("members", { keyPath: "id", autoIncrement: true });
+                console.log("Le magasin d'objets 'members' a été créé.");
             }
         };
 
@@ -176,9 +165,18 @@ const displayMembers = async (db) => {
             button.addEventListener("click", async (event) => {
                 const memberId = parseInt(event.target.getAttribute("data-id"));
                 console.log(`Supprimer le membre ID: ${memberId}`);
-                if (confirm("Êtes-vous sûr de vouloir supprimer ce membre ?")) {
+                
+                // Vérifier que l'ID est valide
+                if (isNaN(memberId)) {
+                    console.error("ID du membre invalide.");
+                    return;
+                }
+
+                try {
                     await deleteMember(db, memberId);
-                    await displayMembers(db);
+                    await displayMembers(db); // Met à jour la liste des membres après suppression
+                } catch (error) {
+                    console.error("Erreur lors de la suppression du membre :", error);
                 }
             });
         });
@@ -199,9 +197,6 @@ const saveMember = async (db) => {
     const statut = memberStatutSelect.value;
     const motDePasse = memberPasswordInput.value.trim();
 
-    // ==============================
-    // Validation (NOUVEAU)
-    // ==============================
     const errors = validateMemberForm(nom, prenom, statut, motDePasse);
     if (errors.length > 0) {
         displayErrors(errors, memberErrorDiv);
@@ -229,15 +224,21 @@ const saveMember = async (db) => {
                 statut,
                 motDePasse
             };
-            membersStore.add(newMember);
-            console.log("Nouveau membre ajouté :", newMember);
+
+            const request = membersStore.add(newMember); // Ajout du nouveau membre
+
+            request.onsuccess = function () {
+                console.log("Nouveau membre ajouté avec succès :", newMember);
+                // Le membre a été ajouté avec un ID généré automatiquement
+                displayMembers(db); // On rafraîchit la liste des membres
+            };
+
+            request.onerror = function (event) {
+                console.error("Erreur lors de l'ajout du membre :", event.target.error);
+            };
         }
 
-        await new Promise((resolve, reject) => {
-            transaction.oncomplete = resolve;
-            transaction.onerror = () => reject(transaction.error);
-        });
-
+        // Réinitialiser la modale après ajout ou modification
         isEditing = false;
         memberToEdit = null;
         memberModalTitle.textContent = "Ajouter un Membre";
@@ -247,19 +248,15 @@ const saveMember = async (db) => {
         memberPasswordInput.value = "";
         memberErrorDiv.textContent = "";
         memberModal.style.display = "none";
-
-        await displayMembers(db);
     } catch (error) {
         console.error("Erreur lors de l'enregistrement du membre :", error);
         displayErrors(["Erreur lors de l'enregistrement. Veuillez réessayer."], memberErrorDiv);
     }
 };
 
-/**
- * =========================
- * 5. Suppression d'un membre
- * =========================
- */
+// =========================
+// Suppression du membre
+// =========================
 const deleteMember = async (db, memberId) => {
     return new Promise((resolve, reject) => {
         const transaction = db.transaction("members", "readwrite");
@@ -267,119 +264,45 @@ const deleteMember = async (db, memberId) => {
         const request = membersStore.delete(memberId);
 
         request.onsuccess = () => {
-            console.log("Membre supprimé :", memberId);
+            console.log(`Membre ID ${memberId} supprimé avec succès.`);
             resolve();
         };
-        request.onerror = () => {
-            console.error("Erreur lors de la suppression du membre :", request.error);
-            reject(request.error);
+        request.onerror = (event) => {
+            console.error(`Erreur lors de la suppression du membre avec ID ${memberId}:`, event.target.error);
+            reject(event.target.error);
         };
     });
 };
 
-/**
- * =========================
- * 6. Événements sur la modale
- * =========================
- */
-saveMemberButton.addEventListener("click", async () => {
-    const db = await initializeIndexedDB();
-    await saveMember(db);
-});
+// =========================
+// Initialisation de la page
+// =========================
+initializeIndexedDB()
+    .then((db) => {
+        displayMembers(db);
 
-closeMemberModalButton.addEventListener("click", () => {
-    isEditing = false;
-    memberToEdit = null;
-    memberModal.style.display = "none";
-});
-
-/**
- * =========================
- * 7. Bouton "Ajouter Membre"
- * =========================
- */
-addMemberButton.addEventListener("click", () => {
-    isEditing = false;
-    memberToEdit = null;
-    memberModalTitle.textContent = "Ajouter un Membre";
-    memberNomInput.value = "";
-    memberPrenomInput.value = "";
-    memberStatutSelect.value = "Membre";
-    memberPasswordInput.value = "";
-    memberErrorDiv.textContent = "";
-    memberModal.style.display = "flex";
-});
-
-/**
- * =========================
- * 8. Bouton "Accueil"
- * =========================
- */
-homeButton.addEventListener("click", () => {
-    window.location.href = "index.html";
-});
-
-/**
- * =========================
- * 9. Vérifier la connexion
- * =========================
- */
-const checkConnectionAndPermissions = async () => {
-    const isConnectedLocal = localStorage.getItem("isConnected");
-    const currentUserLocal = localStorage.getItem("currentUser");
-
-    if (!isConnectedLocal || !currentUserLocal) {
-        console.log("Données manquantes dans localStorage :", {
-            isConnected: isConnectedLocal,
-            currentUser: currentUserLocal,
+        // Bouton pour ajouter un membre
+        addMemberButton.addEventListener("click", () => {
+            isEditing = false;
+            memberModalTitle.textContent = "Ajouter un Membre";
+            memberNomInput.value = "";
+            memberPrenomInput.value = "";
+            memberStatutSelect.value = "Membre";
+            memberPasswordInput.value = "";
+            memberErrorDiv.textContent = "";
+            memberModal.style.display = "flex";
         });
-        alert("Votre session a expiré ou vous n'êtes pas connecté. Retour à l'accueil.");
-        window.location.href = "index.html";
-        return;
-    }
 
-    const currentUser = JSON.parse(currentUserLocal);
-    userStatusSpan.textContent = `Statut : Connecté (${currentUser.statut})`;
-    userStatusSpan.classList.add("connected");
-    authButton.textContent = "Déconnexion";
+        // Enregistrer ou mettre à jour un membre
+        saveMemberButton.addEventListener("click", () => {
+            saveMember(db);
+        });
 
-    if (currentUser.statut === "Administrateur") {
-        addMemberButton.style.display = "inline-block";
-        const db = await initializeIndexedDB();
-        await displayMembers(db);
-    } else {
-        addMemberButton.style.display = "none";
-        membersListDiv.innerHTML = "<p>Vous n'avez pas les permissions pour gérer les membres.</p>";
-    }
-};
-
-/**
- * =========================
- * 10. Déconnexion
- * =========================
- */
-authButton.addEventListener("click", () => {
-    const isConnectedLocal = localStorage.getItem('isConnected') === 'true';
-    if (!isConnectedLocal) {
-        window.location.href = "index.html";
-    } else {
-        localStorage.removeItem('isConnected');
-        localStorage.removeItem('currentUser');
-        userStatusSpan.textContent = "Statut : Non connecté";
-        userStatusSpan.classList.remove("connected");
-        authButton.textContent = "Connexion";
-        addMemberButton.style.display = "none";
-        membersListDiv.innerHTML = "";
-        alert("Vous avez été déconnecté.");
-        window.location.href = "index.html";
-    }
-});
-
-/**
- * =========================
- * 11. Initialisation
- * =========================
- */
-(async () => {
-    await checkConnectionAndPermissions();
-})();
+        // Fermer la modale
+        closeMemberModalButton.addEventListener("click", () => {
+            memberModal.style.display = "none";
+        });
+    })
+    .catch((error) => {
+        console.error("Erreur lors de l'initialisation de la base de données :", error);
+    });
