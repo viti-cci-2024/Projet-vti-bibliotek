@@ -119,8 +119,30 @@ const searchData = async (db, storeName, field, query) => {
     return data.filter((item) => item[field].toLowerCase().includes(query.toLowerCase()));
 };
 
+// Suppression d'un livre
+const deleteBook = async (db, title) => {
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction("books", "readwrite");
+        const booksStore = transaction.objectStore("books");
+
+        const request = booksStore.delete(title);
+
+        request.onsuccess = () => {
+            console.log("Livre supprimé :", title);
+            resolve();
+        };
+
+        request.onerror = () => {
+            console.error("Erreur lors de la suppression du livre :", request.error);
+            reject(request.error);
+        };
+    });
+};
+
 // Affichage des résultats de recherche
 const displaySearchResults = (results, container) => {
+    booksListDiv.style.display = "none"; // Masque la liste complète
+
     container.innerHTML = ""; // Efface les résultats précédents
 
     if (results.length === 0) {
@@ -135,6 +157,7 @@ const displaySearchResults = (results, container) => {
                 <th>Titre</th>
                 <th>Auteur</th>
                 <th>État</th>
+                ${isConnected ? "<th>Actions</th>" : ""}
             </tr>
         </thead>
     `;
@@ -148,39 +171,36 @@ const displaySearchResults = (results, container) => {
             <td class="${book.etat === "Disponible" ? "disponible" : "emprunte"}">
                 ${book.etat}
             </td>
+            ${
+                isConnected
+                    ? `<td><button class="delete-book" data-title="${book.titre}">Supprimer</button></td>`
+                    : ""
+            }
         `;
         tbody.appendChild(tr);
     });
 
     table.appendChild(tbody);
     container.appendChild(table);
-};
 
-// Ajout d'un livre
-const addBook = async (db, title, author) => {
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction("books", "readwrite");
-        const booksStore = transaction.objectStore("books");
-
-        const newBook = { titre: title, auteur: author, etat: "Disponible" };
-        const request = booksStore.add(newBook);
-
-        request.onsuccess = () => {
-            console.log("Livre ajouté :", newBook);
-            resolve();
-        };
-
-        request.onerror = () => {
-            console.error("Erreur lors de l'ajout du livre :", request.error);
-            reject(request.error);
-        };
-    });
+    if (isConnected) {
+        const deleteButtons = document.querySelectorAll(".delete-book");
+        deleteButtons.forEach((button) => {
+            button.addEventListener("click", async (event) => {
+                const title = event.target.getAttribute("data-title");
+                const db = await initializeIndexedDB();
+                await deleteBook(db, title);
+                const updatedResults = await searchData(db, "books", "titre", title);
+                displaySearchResults(updatedResults, container); // Réaffiche les résultats de recherche
+            });
+        });
+    }
 };
 
 // Affichage des livres
 const displayBooks = async (db, container) => {
     try {
-        searchResultsDiv.innerHTML = "";
+        searchResultsDiv.innerHTML = ""; // Efface les résultats de recherche
         container.style.display = "block";
 
         const books = await getAllData(db, "books");
@@ -198,6 +218,7 @@ const displayBooks = async (db, container) => {
                     <th>Titre</th>
                     <th>Auteur</th>
                     <th>État</th>
+                    ${isConnected ? "<th>Actions</th>" : ""}
                 </tr>
             </thead>
         `;
@@ -211,12 +232,28 @@ const displayBooks = async (db, container) => {
                 <td class="${book.etat === "Disponible" ? "disponible" : "emprunte"}">
                     ${book.etat}
                 </td>
+                ${
+                    isConnected
+                        ? `<td><button class="delete-book" data-title="${book.titre}">Supprimer</button></td>`
+                        : ""
+                }
             `;
             tbody.appendChild(tr);
         });
 
         table.appendChild(tbody);
         container.appendChild(table);
+
+        if (isConnected) {
+            const deleteButtons = document.querySelectorAll(".delete-book");
+            deleteButtons.forEach((button) => {
+                button.addEventListener("click", async (event) => {
+                    const title = event.target.getAttribute("data-title");
+                    await deleteBook(db, title);
+                    await displayBooks(db, container); // Réaffiche les livres
+                });
+            });
+        }
     } catch (error) {
         console.error("Erreur lors de l'affichage des livres :", error);
         container.innerHTML = "<p>Erreur lors de la récupération des livres.</p>";
@@ -235,7 +272,7 @@ addBookButton.addEventListener("click", async () => {
 
     try {
         const db = await initializeIndexedDB();
-        await addBook(db, title, author); // Appel de la fonction
+        await addBook(db, title, author);
         bookTitleInput.value = "";
         bookAuthorInput.value = "";
         await displayBooks(db, booksListDiv); // Réaffiche les livres
@@ -262,11 +299,6 @@ searchAuthorButton.addEventListener("click", async () => {
     try {
         const db = await initializeIndexedDB();
         const results = await searchData(db, "books", "auteur", query);
-
-        // Masquer la liste complète
-        booksListDiv.style.display = "none";
-
-        // Afficher les résultats de recherche
         displaySearchResults(results, searchResultsDiv);
     } catch (error) {
         console.error("Erreur lors de la recherche par auteur :", error);
@@ -285,11 +317,6 @@ searchTitleButton.addEventListener("click", async () => {
     try {
         const db = await initializeIndexedDB();
         const results = await searchData(db, "books", "titre", query);
-
-        // Masquer la liste complète
-        booksListDiv.style.display = "none";
-
-        // Afficher les résultats de recherche
         displaySearchResults(results, searchResultsDiv);
     } catch (error) {
         console.error("Erreur lors de la recherche par titre :", error);
