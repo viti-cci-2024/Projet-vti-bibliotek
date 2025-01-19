@@ -22,6 +22,15 @@ const bookAuthorInput = document.getElementById("book-author");
 let isConnected = false;
 let currentUser = { nom: "", prenom: "" };
 
+// Fonction pour mettre à jour le bouton d'authentification
+const updateAuthButton = () => {
+    if (isConnected) {
+        authButton.textContent = "Déconnexion";
+    } else {
+        authButton.textContent = "Connexion";
+    }
+};
+
 // Initialisation d'IndexedDB
 const initializeIndexedDB = async () => {
     return new Promise((resolve, reject) => {
@@ -155,6 +164,33 @@ const deleteBook = async (db, title) => {
 
         request.onerror = () => {
             console.error("Erreur lors de la suppression du livre :", request.error);
+            reject(request.error);
+        };
+    });
+};
+
+// Ajout d'un livre dans IndexedDB
+const addBook = async (db, title, author) => {
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction("books", "readwrite");
+        const booksStore = transaction.objectStore("books");
+
+        const newBook = {
+            titre: title,
+            auteur: author,
+            etat: "Disponible",
+            emprunteur: null
+        };
+
+        const request = booksStore.add(newBook);
+
+        request.onsuccess = () => {
+            console.log("Livre ajouté :", newBook);
+            resolve();
+        };
+
+        request.onerror = () => {
+            console.error("Erreur lors de l'ajout du livre :", request.error);
             reject(request.error);
         };
     });
@@ -434,16 +470,32 @@ searchTitleButton.addEventListener("click", async () => {
     }
 });
 
-// Gestion dela modale de connexion
+// Gestion de la modale de connexion
 authButton.addEventListener("click", () => {
-    authModal.style.display = "flex";
-    authErrorDiv.textContent = "";
+    if (!isConnected) {
+        // Si l'utilisateur n'est pas connecté, ouvrir la modale de connexion
+        authModal.style.display = "flex";
+        authErrorDiv.textContent = "";
+    } else {
+        // Si l'utilisateur est connecté, procéder à la déconnexion
+        isConnected = false;
+        currentUser = { nom: "", prenom: "" };
+        userStatusSpan.textContent = "Statut : Non connecté";
+        userStatusSpan.classList.remove("connected");
+        addBookSection.style.display = "none"; // Cache la section d'ajout
+        booksListDiv.innerHTML = ""; // Optionnel: Efface la liste des livres affichés
+        searchResultsDiv.innerHTML = ""; // Optionnel: Efface les résultats de recherche
+        updateAuthButton(); // Met à jour le bouton d'authentification
+        console.log("Utilisateur déconnecté.");
+    }
 });
 
+// Fermeture de la modale
 closeModalButton.addEventListener("click", () => {
     authModal.style.display = "none";
 });
 
+// Gestion de la connexion
 loginButton.addEventListener("click", async () => {
     const name = document.getElementById("auth-name").value.trim();
     const firstname = document.getElementById("auth-firstname").value.trim();
@@ -472,6 +524,8 @@ loginButton.addEventListener("click", async () => {
             userStatusSpan.classList.add("connected");
             addBookSection.style.display = "block"; // Affiche la section d'ajout
             authModal.style.display = "none";
+            updateAuthButton(); // Met à jour le bouton d'authentification
+            console.log("Utilisateur connecté :", currentUser);
         } else {
             authErrorDiv.textContent = "Identifiants incorrects.";
         }
@@ -504,4 +558,7 @@ loginButton.addEventListener("click", async () => {
 
     // Cache les fonctionnalités d'ajout au démarrage
     addBookSection.style.display = "none";
+
+    // Initialise le texte du bouton d'authentification
+    updateAuthButton();
 })();
