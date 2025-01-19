@@ -323,7 +323,7 @@ const displaySearchResults = (results, container) => {
         tr.innerHTML = `
             <td>${book.titre}</td>
             <td>${book.auteur}</td>
-            <td class="${book.etat === "Disponible" ? "disponible" : "emprunte"}">${book.etat}</td>
+            <td class="${book.etat === "Disponible" ? "text-success" : "text-danger"}">${book.etat}</td>
             ${isConnected ? `<td>${book.emprunteur || "N/A"}</td>` : ""}
             ${
                 isConnected
@@ -443,7 +443,7 @@ const displayBooks = async (db, container) => {
             tr.innerHTML = `
                 <td>${book.titre}</td>
                 <td>${book.auteur}</td>
-                <td class="${book.etat === "Disponible" ? "disponible" : "emprunte"}">${book.etat}</td>
+                <td class="${book.etat === "Disponible" ? "text-success" : "text-danger"}">${book.etat}</td>
                 ${isConnected ? `<td>${book.emprunteur || "N/A"}</td>` : ""}
                 ${
                     isConnected
@@ -463,6 +463,7 @@ const displayBooks = async (db, container) => {
             `;
             tbody.appendChild(tr);
         });
+        
 
         table.appendChild(tbody);
         container.appendChild(table);
