@@ -31,7 +31,6 @@
         <button id="clear-books" class="btn btn-danger">Effacer la liste</button>
       </div>
 
-
       <div id="books-list" class="table-responsive mb-4"></div>
       <div id="search-results" class="table-responsive"></div>
       </div>
@@ -71,20 +70,28 @@
     </main>
   </div>
 
-  <div class="modal" id="auth-modal">
-    <div class="modal-content">
-      <h2>Connexion</h2>
-      <div id="auth-error" class="error" role="alert" aria-live="assertive"></div>
-      <label for="auth-name">Nom</label>
-      <input type="text" id="auth-name" class="form-control" placeholder="Nom" />
-      <label for="auth-firstname">Prénom</label>
-      <input type="text" id="auth-firstname" class="form-control" placeholder="Prénom" />
-      <label for="auth-password">Mot de passe</label>
-      <input type="password" id="auth-password" class="form-control" placeholder="Mot de passe" />
-      <button id="login-button" class="btn btn-primary mt-3">Se connecter</button>
-      <button class="btn btn-secondary mt-2" id="close-modal">Fermer</button>
+  <div class="modal" id="auth-modal">  <!-- start modale -->
+    <div class="container-fluid bg-dark bg-opacity-50 d-flex align-items-center">
+    <div class="container-sm">
+      <div class="row justify-content-center">
+        <div class="col-md-6">
+          <div class="modal-content p-4">
+            <h2>Connexion</h2>
+            <div id="auth-error" class="error" role="alert" aria-live="assertive"></div>
+            <label for="auth-name">Nom</label>
+            <input type="text" id="auth-name" class="form-control" placeholder="Nom" />
+            <label for="auth-firstname">Prénom</label>
+            <input type="text" id="auth-firstname" class="form-control" placeholder="Prénom" />
+            <label for="auth-password">Mot de passe</label>
+            <input type="password" id="auth-password" class="form-control" placeholder="Mot de passe" />
+            <button id="login-button" class="btn btn-primary mt-3">Se connecter</button>
+            <button class="btn btn-secondary mt-2" id="close-modal">Fermer</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
+  </div> <!-- fin modale -->
 
   <div class="modal" id="edit-modal">
     <div class="modal-content">
