@@ -10,6 +10,8 @@ const memberStatutSelect = document.getElementById("member-statut");
 const memberPasswordInput = document.getElementById("member-password");
 const saveMemberButton = document.getElementById("save-member-button");
 const closeMemberModalButton = document.getElementById("close-member-modal");
+const authButton = document.getElementById("auth-button");
+const userStatusSpan = document.getElementById("user-status");
 
 // Variables pour suivre l'état de la modale
 let isEditing = false;
@@ -277,6 +279,21 @@ const deleteMember = async (db, memberId) => {
         };
     });
 };
+
+// Déconnexion
+authButton.addEventListener("click", () => {
+    // Supprimer les informations de connexion du localStorage
+    localStorage.removeItem("isConnected");
+    localStorage.removeItem("currentUser");
+
+    // Mettre à jour l'affichage du statut de l'utilisateur
+    userStatusSpan.textContent = "Statut : connecté";
+    userStatusSpan.classList.remove("connected");
+    authButton.textContent = "Connexion";
+
+    // Rediriger vers la page index.html
+    window.location.href = "index.html";
+});
 
 // =========================
 // Initialisation de la page
