@@ -25,14 +25,17 @@ let memberToEdit = null;
 // Fonction pour initialiser et accéder à IndexedDB
 const initializeIndexedDB = async () => {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open("Bibliotheque", 1);
+        // Même version que dans script.js !
+        const request = indexedDB.open("Bibliotheque", 2);
 
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
 
+            // Même logique que dans script.js
             if (!db.objectStoreNames.contains("books")) {
                 db.createObjectStore("books", { keyPath: "titre" });
             }
+
             if (!db.objectStoreNames.contains("members")) {
                 db.createObjectStore("members", { keyPath: "id", autoIncrement: true });
             }

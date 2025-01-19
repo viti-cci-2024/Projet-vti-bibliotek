@@ -61,21 +61,25 @@ membersButton.addEventListener("click", () => {
 // Initialisation d'IndexedDB
 const initializeIndexedDB = async () => {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open("Bibliotheque", 1);
+        // IMPORTANT : on passe en version 2 (ou plus) pour forcer onupgradeneeded
+        const request = indexedDB.open("Bibliotheque", 2);
 
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
 
+            // Création du store "books" (inchangé)
             if (!db.objectStoreNames.contains("books")) {
                 db.createObjectStore("books", { keyPath: "titre" });
             }
+
+            // Harmonisation : création du store "members" AVEC autoIncrement: true
             if (!db.objectStoreNames.contains("members")) {
-                db.createObjectStore("members", { keyPath: "id" });
+                db.createObjectStore("members", { keyPath: "id", autoIncrement: true });
             }
         };
 
         request.onsuccess = () => {
-            console.log("Base IndexedDB initialisée.");
+            console.log("Base IndexedDB initialisée (script.js).");
             resolve(request.result);
         };
 
