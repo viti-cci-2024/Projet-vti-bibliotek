@@ -20,10 +20,10 @@ const addBookButton = document.getElementById("add-book-button");
 const bookTitleInput = document.getElementById("book-title");
 const bookAuthorInput = document.getElementById("book-author");
 
-// **Nouveau : Référence au Bouton "Gestion des Membres"**
+// Bouton "Gestion des Membres"
 const membersButton = document.getElementById("members-button");
 
-// Variables pour suivre l'utilisateur connecté
+// Suivi de la connexion
 let isConnected = false;
 let currentUser = { nom: "", prenom: "", statut: "" };
 
@@ -34,16 +34,54 @@ const validateEditButton = document.getElementById("validate-edit-button");
 const editTitleInput = document.getElementById("edit-title");
 const editAuthorInput = document.getElementById("edit-author");
 const editErrorDiv = document.getElementById("edit-error");
-let bookToEdit = null; // Objet du livre en cours de modification
+let bookToEdit = null; 
 
 /**
  * =========================
- * 1. Initialisation IndexedDB
+ * 1. NOUVEAU : Fonctions de validation & affichage d'erreurs
+ * =========================
+ */
+
+// Valide le formulaire de connexion
+function validateLoginForm(name, firstname, password) {
+    const errors = [];
+    if (!name) errors.push("Le champ Nom est requis.");
+    if (!firstname) errors.push("Le champ Prénom est requis.");
+    if (!password) errors.push("Le champ Mot de passe est requis.");
+    if (password && password.length < 4) {
+        errors.push("Le mot de passe doit contenir au moins 4 caractères.");
+    }
+    return errors;
+}
+
+// Affiche un tableau d'erreurs dans un conteneur (ex: authErrorDiv)
+function displayErrors(errors, container) {
+    // On vide d'abord le conteneur
+    container.innerHTML = "";
+    if (!errors || errors.length === 0) return;
+
+    // On crée une liste <ul> pour énumérer chaque message
+    const ul = document.createElement("ul");
+    errors.forEach((msg) => {
+        const li = document.createElement("li");
+        li.textContent = msg;
+        ul.appendChild(li);
+    });
+    container.appendChild(ul);
+
+    // Optionnel : focus sur la zone d'erreur pour l'accessibilité
+    container.setAttribute("tabindex", "-1");
+    container.focus();
+}
+
+/**
+ * =========================
+ * 2. Initialisation IndexedDB
  * =========================
  */
 const initializeIndexedDB = async () => {
     return new Promise((resolve, reject) => {
-        // On passe en version 2 pour forcer onupgradeneeded si la base n’existe pas ou est en version 1
+        // Version 2 (ou plus) pour inclure autoIncrement sur "members"
         const request = indexedDB.open("Bibliotheque", 2);
 
         request.onupgradeneeded = (event) => {
@@ -52,8 +90,6 @@ const initializeIndexedDB = async () => {
             if (!db.objectStoreNames.contains("books")) {
                 db.createObjectStore("books", { keyPath: "titre" });
             }
-
-            // Harmonisation : store members avec autoIncrement
             if (!db.objectStoreNames.contains("members")) {
                 db.createObjectStore("members", { keyPath: "id", autoIncrement: true });
             }
@@ -73,7 +109,7 @@ const initializeIndexedDB = async () => {
 
 /**
  * =========================
- * 2. Chargement initial des données dans IndexedDB
+ * 3. Chargement initial des données
  * =========================
  */
 const loadInitialBooks = async (db) => {
@@ -84,15 +120,12 @@ const loadInitialBooks = async (db) => {
         const transaction = db.transaction("books", "readwrite");
         const booksStore = transaction.objectStore("books");
 
-        booksData.forEach((book) => {
-            booksStore.put(book);
-        });
+        booksData.forEach((book) => booksStore.put(book));
 
         await new Promise((resolve, reject) => {
             transaction.oncomplete = resolve;
             transaction.onerror = () => reject(transaction.error);
         });
-
         console.log("Livres chargés avec succès.");
     } catch (error) {
         console.error("Erreur lors du chargement des livres :", error);
@@ -107,15 +140,12 @@ const loadInitialMembers = async (db) => {
         const transaction = db.transaction("members", "readwrite");
         const membersStore = transaction.objectStore("members");
 
-        membersData.forEach((member) => {
-            membersStore.put(member);
-        });
+        membersData.forEach((member) => membersStore.put(member));
 
         await new Promise((resolve, reject) => {
             transaction.oncomplete = resolve;
             transaction.onerror = () => reject(transaction.error);
         });
-
         console.log("Membres chargés avec succès.");
     } catch (error) {
         console.error("Erreur lors du chargement des membres :", error);
@@ -135,7 +165,7 @@ const checkDataLoaded = async (db, storeName) => {
 
 /**
  * =========================
- * 3. Gestion des livres
+ * 4. Gestion des livres
  * =========================
  */
 const getAllData = async (db, storeName) => {
@@ -159,8 +189,8 @@ const updateBook = async (db, oldTitle, updatedBook) => {
         const transaction = db.transaction("books", "readwrite");
         const booksStore = transaction.objectStore("books");
 
-        // Si le titre a changé, on supprime l'ancien enregistrement puis on ajoute
         if (oldTitle !== updatedBook.titre) {
+            // Supprime l'ancien enregistrement
             booksStore.delete(oldTitle).onsuccess = () => {
                 booksStore.put(updatedBook).onsuccess = () => {
                     console.log("Livre mis à jour :", updatedBook);
@@ -176,6 +206,7 @@ const updateBook = async (db, oldTitle, updatedBook) => {
                 reject(booksStore.error);
             };
         } else {
+            // Titre inchangé
             booksStore.put(updatedBook).onsuccess = () => {
                 console.log("Livre mis à jour :", updatedBook);
                 resolve();
@@ -194,12 +225,10 @@ const deleteBook = async (db, title) => {
         const booksStore = transaction.objectStore("books");
 
         const request = booksStore.delete(title);
-
         request.onsuccess = () => {
             console.log("Livre supprimé :", title);
             resolve();
         };
-
         request.onerror = () => {
             console.error("Erreur lors de la suppression du livre :", request.error);
             reject(request.error);
@@ -220,12 +249,10 @@ const addBook = async (db, title, author) => {
         };
 
         const request = booksStore.add(newBook);
-
         request.onsuccess = () => {
             console.log("Livre ajouté :", newBook);
             resolve();
         };
-
         request.onerror = () => {
             console.error("Erreur lors de l'ajout du livre :", request.error);
             reject(request.error);
@@ -235,12 +262,12 @@ const addBook = async (db, title, author) => {
 
 /**
  * =========================
- * 4. Affichage et interactions
+ * 5. Affichage & interactions
  * =========================
  */
 const displaySearchResults = (results, container) => {
-    booksListDiv.style.display = "none"; // Masque la liste complète
-    container.innerHTML = ""; // Efface les résultats précédents
+    booksListDiv.style.display = "none";
+    container.innerHTML = "";
 
     if (results.length === 0) {
         container.innerHTML = "<p>Aucun résultat trouvé.</p>";
@@ -266,26 +293,22 @@ const displaySearchResults = (results, container) => {
         tr.innerHTML = `
             <td>${book.titre}</td>
             <td>${book.auteur}</td>
-            <td class="${book.etat === "Disponible" ? "disponible" : "emprunte"}">
-                ${book.etat}
-            </td>
+            <td class="${book.etat === "Disponible" ? "disponible" : "emprunte"}">${book.etat}</td>
+            ${isConnected ? `<td>${book.emprunteur || "N/A"}</td>` : ""}
             ${
                 isConnected
-                    ? `<td>${book.emprunteur || "N/A"}</td>`
-                    : ""
-            }
-            ${
-                isConnected
-                    ? `
+                ? `
                 <td>
-                    ${book.etat === "Disponible" 
+                    ${
+                        book.etat === "Disponible"
                         ? `<button class="borrow-book" data-title="${book.titre}">Emprunter</button>`
-                        : `<button class="return-book" data-title="${book.titre}">Retourner</button>`}
+                        : `<button class="return-book" data-title="${book.titre}">Retourner</button>`
+                    }
                     <button class="delete-book" data-title="${book.titre}">Supprimer</button>
                     <button class="edit-book" data-title="${book.titre}">Modifier</button>
                 </td>
                 `
-                    : ""
+                : ""
             }
         `;
         tbody.appendChild(tr);
@@ -295,7 +318,7 @@ const displaySearchResults = (results, container) => {
     container.appendChild(table);
 
     if (isConnected) {
-        // Gestion des boutons "Emprunter"
+        // Emprunter
         const borrowButtons = document.querySelectorAll(".borrow-book");
         borrowButtons.forEach((button) => {
             button.addEventListener("click", async (event) => {
@@ -306,13 +329,12 @@ const displaySearchResults = (results, container) => {
                     book.emprunteur = `${currentUser.prenom} ${currentUser.nom}`;
                     const db = await initializeIndexedDB();
                     await updateBook(db, book.titre, book);
-                    // Recharge l’affichage
                     displaySearchResults(await searchData(db, "books", "titre", ""), container);
                 }
             });
         });
 
-        // Gestion des boutons "Retourner"
+        // Retourner
         const returnButtons = document.querySelectorAll(".return-book");
         returnButtons.forEach((button) => {
             button.addEventListener("click", async (event) => {
@@ -328,7 +350,7 @@ const displaySearchResults = (results, container) => {
             });
         });
 
-        // Gestion des boutons "Supprimer"
+        // Supprimer
         const deleteButtons = document.querySelectorAll(".delete-book");
         deleteButtons.forEach((button) => {
             button.addEventListener("click", async (event) => {
@@ -339,7 +361,7 @@ const displaySearchResults = (results, container) => {
             });
         });
 
-        // Gestion des boutons "Modifier"
+        // Modifier
         const editButtons = document.querySelectorAll(".edit-book");
         editButtons.forEach((button) => {
             button.addEventListener("click", async (event) => {
@@ -361,7 +383,7 @@ const displaySearchResults = (results, container) => {
 
 const displayBooks = async (db, container) => {
     try {
-        searchResultsDiv.innerHTML = ""; // Efface les résultats
+        searchResultsDiv.innerHTML = "";
         container.style.display = "block";
 
         const books = await getAllData(db, "books");
@@ -391,26 +413,22 @@ const displayBooks = async (db, container) => {
             tr.innerHTML = `
                 <td>${book.titre}</td>
                 <td>${book.auteur}</td>
-                <td class="${book.etat === "Disponible" ? "disponible" : "emprunte"}">
-                    ${book.etat}
-                </td>
+                <td class="${book.etat === "Disponible" ? "disponible" : "emprunte"}">${book.etat}</td>
+                ${isConnected ? `<td>${book.emprunteur || "N/A"}</td>` : ""}
                 ${
                     isConnected
-                        ? `<td>${book.emprunteur || "N/A"}</td>`
-                        : ""
-                }
-                ${
-                    isConnected
-                        ? `
+                    ? `
                     <td>
-                        ${book.etat === "Disponible" 
+                        ${
+                            book.etat === "Disponible"
                             ? `<button class="borrow-book" data-title="${book.titre}">Emprunter</button>`
-                            : `<button class="return-book" data-title="${book.titre}">Retourner</button>`}
+                            : `<button class="return-book" data-title="${book.titre}">Retourner</button>`
+                        }
                         <button class="delete-book" data-title="${book.titre}">Supprimer</button>
                         <button class="edit-book" data-title="${book.titre}">Modifier</button>
                     </td>
                     `
-                        : ""
+                    : ""
                 }
             `;
             tbody.appendChild(tr);
@@ -420,7 +438,7 @@ const displayBooks = async (db, container) => {
         container.appendChild(table);
 
         if (isConnected) {
-            // Boutons "Emprunter"
+            // Emprunter, Retourner, Supprimer, Modifier (même logique que plus haut)
             const borrowButtons = document.querySelectorAll(".borrow-book");
             borrowButtons.forEach((button) => {
                 button.addEventListener("click", async (event) => {
@@ -435,7 +453,6 @@ const displayBooks = async (db, container) => {
                 });
             });
 
-            // Boutons "Retourner"
             const returnButtons = document.querySelectorAll(".return-book");
             returnButtons.forEach((button) => {
                 button.addEventListener("click", async (event) => {
@@ -450,7 +467,6 @@ const displayBooks = async (db, container) => {
                 });
             });
 
-            // Boutons "Supprimer"
             const deleteButtons = document.querySelectorAll(".delete-book");
             deleteButtons.forEach((button) => {
                 button.addEventListener("click", async (event) => {
@@ -460,12 +476,10 @@ const displayBooks = async (db, container) => {
                 });
             });
 
-            // Boutons "Modifier"
             const editButtons = document.querySelectorAll(".edit-book");
             editButtons.forEach((button) => {
                 button.addEventListener("click", async (event) => {
                     const title = event.target.getAttribute("data-title");
-                    const db = await initializeIndexedDB();
                     const books = await getAllData(db, "books");
                     const book = books.find((b) => b.titre === title);
                     if (book) {
@@ -486,13 +500,15 @@ const displayBooks = async (db, container) => {
 
 /**
  * =========================
- * 5. Gestion de l'ajout de livre
+ * 6. Gestion de l’ajout de livre
  * =========================
  */
 addBookButton.addEventListener("click", async () => {
     const title = bookTitleInput.value.trim();
     const author = bookAuthorInput.value.trim();
 
+    // Ici, tu pourrais créer un validateBookForm(...) pour plus de précision
+    // Exemple minimal :
     if (!title || !author) {
         console.error("Titre et auteur sont obligatoires.");
         return;
@@ -511,11 +527,11 @@ addBookButton.addEventListener("click", async () => {
 
 /**
  * =========================
- * 6. Gestion du bouton Clear
+ * 7. Effacer la liste
  * =========================
  */
 clearBooksButton.addEventListener("click", () => {
-    booksListDiv.innerHTML = ""; 
+    booksListDiv.innerHTML = "";
     booksListDiv.style.display = "none";
     searchResultsDiv.innerHTML = "";
     console.log("Liste des livres effacée.");
@@ -523,7 +539,7 @@ clearBooksButton.addEventListener("click", () => {
 
 /**
  * =========================
- * 7. Recherches
+ * 8. Recherche
  * =========================
  */
 searchAuthorButton.addEventListener("click", async () => {
@@ -562,16 +578,14 @@ searchTitleButton.addEventListener("click", async () => {
 
 /**
  * =========================
- * 8. Modale d'authentification
+ * 9. Connexion / Déconnexion
  * =========================
  */
 authButton.addEventListener("click", () => {
     if (!isConnected) {
-        // Ouvrir la modale de connexion
         authModal.style.display = "flex";
         authErrorDiv.textContent = "";
     } else {
-        // Déconnexion
         isConnected = false;
         currentUser = { nom: "", prenom: "", statut: "" };
         localStorage.removeItem("isConnected");
@@ -593,8 +607,12 @@ loginButton.addEventListener("click", async () => {
     const firstname = document.getElementById("auth-firstname").value.trim();
     const password = document.getElementById("auth-password").value;
 
-    if (!name || !firstname || !password) {
-        authErrorDiv.textContent = "Veuillez remplir tous les champs.";
+    // ==============================
+    // NOUVEAU : utilisation de validateLoginForm
+    // ==============================
+    const errors = validateLoginForm(name, firstname, password);
+    if (errors.length > 0) {
+        displayErrors(errors, authErrorDiv);
         return;
     }
 
@@ -610,7 +628,6 @@ loginButton.addEventListener("click", async () => {
         );
 
         if (user) {
-            // Stocke l'info de connexion dans localStorage
             localStorage.setItem("isConnected", "true");
             localStorage.setItem("currentUser", JSON.stringify(user));
             console.log("Utilisateur connecté :", user);
@@ -621,17 +638,17 @@ loginButton.addEventListener("click", async () => {
             authModal.style.display = "none";
             updateAuthButton();
         } else {
-            authErrorDiv.textContent = "Identifiants incorrects.";
+            displayErrors(["Identifiants incorrects."], authErrorDiv);
         }
     } catch (error) {
         console.error("Erreur lors de la connexion :", error);
-        authErrorDiv.textContent = "Une erreur est survenue. Veuillez réessayer.";
+        displayErrors(["Une erreur est survenue. Veuillez réessayer."], authErrorDiv);
     }
 });
 
 /**
  * =========================
- * 9. Modale de modification d'un livre
+ * 10. Modale de modification d'un livre
  * =========================
  */
 closeEditModalButton.addEventListener("click", () => {
@@ -643,14 +660,14 @@ validateEditButton.addEventListener("click", async () => {
     const newAuthor = editAuthorInput.value.trim();
 
     if (!newTitle || !newAuthor) {
-        editErrorDiv.textContent = "Veuillez remplir tous les champs.";
+        displayErrors(["Veuillez remplir tous les champs (Titre et Auteur)."], editErrorDiv);
         return;
     }
 
     try {
         const db = await initializeIndexedDB();
 
-        // Vérifier si un livre avec ce nouveau titre existe déjà
+        // Vérifier si un livre avec ce titre existe déjà
         if (newTitle !== bookToEdit.titre) {
             const existingBook = await new Promise((resolve, reject) => {
                 const transaction = db.transaction("books", "readonly");
@@ -661,7 +678,7 @@ validateEditButton.addEventListener("click", async () => {
             });
 
             if (existingBook) {
-                editErrorDiv.textContent = "Un livre avec ce titre existe déjà.";
+                displayErrors(["Un livre avec ce titre existe déjà."], editErrorDiv);
                 return;
             }
         }
@@ -677,13 +694,13 @@ validateEditButton.addEventListener("click", async () => {
         await displayBooks(db, booksListDiv);
     } catch (error) {
         console.error("Erreur lors de la modification du livre :", error);
-        editErrorDiv.textContent = "Erreur lors de la modification. Veuillez réessayer.";
+        displayErrors(["Erreur lors de la modification. Veuillez réessayer."], editErrorDiv);
     }
 });
 
 /**
  * =========================
- * 10. Mise à jour du bouton d'authentification
+ * 11. Mise à jour du bouton d'authentification
  * =========================
  */
 const updateAuthButton = () => {
@@ -702,21 +719,19 @@ const updateAuthButton = () => {
 
 /**
  * =========================
- * 11. Bouton "Gestion des Membres"
+ * 12. Bouton "Gestion des Membres"
  * =========================
  */
 membersButton.addEventListener("click", () => {
-    // On ne vide pas localStorage, on fait juste la redirection
     window.location.href = "membres.html";
 });
 
 /**
  * =========================
- * 12. Restauration de la connexion via localStorage
+ * 13. Restauration de la connexion via localStorage
  * =========================
  */
 document.addEventListener("DOMContentLoaded", async () => {
-    // Lire l'état de connexion précédent
     const storedIsConnected = localStorage.getItem("isConnected");
     const storedUser = localStorage.getItem("currentUser");
 
@@ -734,7 +749,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 /**
  * =========================
- * 13. Initialisation globale (IIFE)
+ * 14. Initialisation globale
  * =========================
  */
 (async () => {
@@ -754,12 +769,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         console.log("Les membres sont déjà chargés dans IndexedDB.");
     }
 
-    // Bouton "Afficher les livres"
     showBooksButton.addEventListener("click", () => displayBooks(db, booksListDiv));
 
-    // Au démarrage, on n’affiche pas la liste des livres tant qu’on n’a pas cliqué
     booksListDiv.innerHTML = "";
     booksListDiv.style.display = "none";
-
-    // On laisse l’utilisateur naviguer, les boutons/modes s’adaptent selon isConnected
 })();

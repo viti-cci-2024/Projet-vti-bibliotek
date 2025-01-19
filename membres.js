@@ -2,7 +2,7 @@
 console.log("isConnected:", localStorage.getItem("isConnected"));
 console.log("currentUser:", localStorage.getItem("currentUser"));
 
-// Références aux éléments DOM
+// Références DOM
 const membersListDiv = document.getElementById("members-list");
 const addMemberButton = document.getElementById("add-member-button");
 const memberModal = document.getElementById("member-modal");
@@ -16,26 +16,63 @@ const saveMemberButton = document.getElementById("save-member-button");
 const closeMemberModalButton = document.getElementById("close-member-modal");
 const userStatusSpan = document.getElementById("user-status");
 const authButton = document.getElementById("auth-button");
-const homeButton = document.getElementById("home-button"); // Bouton d'accueil
+const homeButton = document.getElementById("home-button");
 
-// Variables pour suivre l'état de la modale et l'édition
+// Variables pour suivre l'état de la modale
 let isEditing = false;
 let memberToEdit = null;
 
-// Fonction pour initialiser et accéder à IndexedDB
+/**
+ * =========================
+ * 1. NOUVEAU : Fonctions de validation & affichage d’erreurs
+ * =========================
+ */
+function validateMemberForm(nom, prenom, statut, motDePasse) {
+    const errors = [];
+
+    if (!nom) errors.push("Le champ Nom est requis.");
+    if (!prenom) errors.push("Le champ Prénom est requis.");
+    if (!statut) errors.push("Le champ Statut doit être sélectionné.");
+    if (!motDePasse) {
+        errors.push("Le champ Mot de passe est requis.");
+    } else if (motDePasse.length < 4) {
+        errors.push("Le mot de passe doit comporter au moins 4 caractères.");
+    }
+
+    return errors;
+}
+
+function displayErrors(errors, container) {
+    container.innerHTML = "";
+    if (!errors || errors.length === 0) return;
+
+    const ul = document.createElement("ul");
+    errors.forEach((msg) => {
+        const li = document.createElement("li");
+        li.textContent = msg;
+        ul.appendChild(li);
+    });
+    container.appendChild(ul);
+
+    // Optionnel : focus sur la zone d’erreur
+    container.setAttribute("tabindex", "-1");
+    container.focus();
+}
+
+/**
+ * =========================
+ * 2. Initialiser IndexedDB
+ * =========================
+ */
 const initializeIndexedDB = async () => {
     return new Promise((resolve, reject) => {
-        // Même version que dans script.js !
-        const request = indexedDB.open("Bibliotheque", 2);
+        const request = indexedDB.open("Bibliotheque", 2); // même version que script.js
 
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
-
-            // Même logique que dans script.js
             if (!db.objectStoreNames.contains("books")) {
                 db.createObjectStore("books", { keyPath: "titre" });
             }
-
             if (!db.objectStoreNames.contains("members")) {
                 db.createObjectStore("members", { keyPath: "id", autoIncrement: true });
             }
@@ -53,12 +90,15 @@ const initializeIndexedDB = async () => {
     });
 };
 
-// Fonction pour récupérer tous les membres
+/**
+ * =========================
+ * 3. Récupération des membres
+ * =========================
+ */
 const getAllMembers = async (db) => {
     return new Promise((resolve, reject) => {
         const transaction = db.transaction("members", "readonly");
         const membersStore = transaction.objectStore("members");
-
         const request = membersStore.getAll();
 
         request.onsuccess = () => resolve(request.result);
@@ -66,12 +106,11 @@ const getAllMembers = async (db) => {
     });
 };
 
-// Fonction pour afficher les membres dans une table
 const displayMembers = async (db) => {
     try {
         const members = await getAllMembers(db);
         console.log("Membres récupérés :", members);
-        membersListDiv.innerHTML = ""; // Efface la liste existante
+        membersListDiv.innerHTML = "";
 
         if (members.length === 0) {
             membersListDiv.innerHTML = "<p>Aucun membre enregistré.</p>";
@@ -110,7 +149,7 @@ const displayMembers = async (db) => {
         table.appendChild(tbody);
         membersListDiv.appendChild(table);
 
-        // Ajouter des gestionnaires d'événements pour les boutons Modifier et Supprimer
+        // Bouton "Modifier"
         const editButtons = document.querySelectorAll(".edit-button");
         editButtons.forEach((button) => {
             button.addEventListener("click", async (event) => {
@@ -124,13 +163,14 @@ const displayMembers = async (db) => {
                     memberNomInput.value = member.nom;
                     memberPrenomInput.value = member.prenom;
                     memberStatutSelect.value = member.statut;
-                    memberPasswordInput.value = member.motDePasse || ""; // Si motDePasse n'existe pas
+                    memberPasswordInput.value = member.motDePasse || "";
                     memberErrorDiv.textContent = "";
                     memberModal.style.display = "flex";
                 }
             });
         });
 
+        // Bouton "Supprimer"
         const deleteButtons = document.querySelectorAll(".delete-button");
         deleteButtons.forEach((button) => {
             button.addEventListener("click", async (event) => {
@@ -138,7 +178,7 @@ const displayMembers = async (db) => {
                 console.log(`Supprimer le membre ID: ${memberId}`);
                 if (confirm("Êtes-vous sûr de vouloir supprimer ce membre ?")) {
                     await deleteMember(db, memberId);
-                    await displayMembers(db); // Rafraîchit la liste des membres
+                    await displayMembers(db);
                 }
             });
         });
@@ -148,15 +188,23 @@ const displayMembers = async (db) => {
     }
 };
 
-// Fonction pour ajouter ou mettre à jour un membre
+/**
+ * =========================
+ * 4. Ajout / modification d'un membre
+ * =========================
+ */
 const saveMember = async (db) => {
     const nom = memberNomInput.value.trim();
     const prenom = memberPrenomInput.value.trim();
     const statut = memberStatutSelect.value;
     const motDePasse = memberPasswordInput.value.trim();
 
-    if (!nom || !prenom || !statut || !motDePasse) {
-        memberErrorDiv.textContent = "Veuillez remplir tous les champs.";
+    // ==============================
+    // Validation (NOUVEAU)
+    // ==============================
+    const errors = validateMemberForm(nom, prenom, statut, motDePasse);
+    if (errors.length > 0) {
+        displayErrors(errors, memberErrorDiv);
         return;
     }
 
@@ -165,7 +213,6 @@ const saveMember = async (db) => {
         const membersStore = transaction.objectStore("members");
 
         if (isEditing && memberToEdit) {
-            // Mettre à jour le membre existant
             const updatedMember = {
                 ...memberToEdit,
                 nom,
@@ -176,7 +223,6 @@ const saveMember = async (db) => {
             membersStore.put(updatedMember);
             console.log("Membre mis à jour :", updatedMember);
         } else {
-            // Ajouter un nouveau membre
             const newMember = {
                 nom,
                 prenom,
@@ -187,13 +233,11 @@ const saveMember = async (db) => {
             console.log("Nouveau membre ajouté :", newMember);
         }
 
-        // Attendre la fin de la transaction
         await new Promise((resolve, reject) => {
             transaction.oncomplete = resolve;
             transaction.onerror = () => reject(transaction.error);
         });
 
-        // Réinitialiser la modale
         isEditing = false;
         memberToEdit = null;
         memberModalTitle.textContent = "Ajouter un Membre";
@@ -204,27 +248,28 @@ const saveMember = async (db) => {
         memberErrorDiv.textContent = "";
         memberModal.style.display = "none";
 
-        // Rafraîchir la liste des membres
         await displayMembers(db);
     } catch (error) {
         console.error("Erreur lors de l'enregistrement du membre :", error);
-        memberErrorDiv.textContent = "Erreur lors de l'enregistrement. Veuillez réessayer.";
+        displayErrors(["Erreur lors de l'enregistrement. Veuillez réessayer."], memberErrorDiv);
     }
 };
 
-// Fonction pour supprimer un membre
+/**
+ * =========================
+ * 5. Suppression d'un membre
+ * =========================
+ */
 const deleteMember = async (db, memberId) => {
     return new Promise((resolve, reject) => {
         const transaction = db.transaction("members", "readwrite");
         const membersStore = transaction.objectStore("members");
-
         const request = membersStore.delete(memberId);
 
         request.onsuccess = () => {
             console.log("Membre supprimé :", memberId);
             resolve();
         };
-
         request.onerror = () => {
             console.error("Erreur lors de la suppression du membre :", request.error);
             reject(request.error);
@@ -232,20 +277,27 @@ const deleteMember = async (db, memberId) => {
     });
 };
 
-// Gestion de la modale d'ajout/modification de membre
+/**
+ * =========================
+ * 6. Événements sur la modale
+ * =========================
+ */
 saveMemberButton.addEventListener("click", async () => {
     const db = await initializeIndexedDB();
     await saveMember(db);
 });
 
-// Fermeture de la modale
 closeMemberModalButton.addEventListener("click", () => {
     isEditing = false;
     memberToEdit = null;
     memberModal.style.display = "none";
 });
 
-// Gestion de l'ajout de membre
+/**
+ * =========================
+ * 7. Bouton "Ajouter Membre"
+ * =========================
+ */
 addMemberButton.addEventListener("click", () => {
     isEditing = false;
     memberToEdit = null;
@@ -258,12 +310,20 @@ addMemberButton.addEventListener("click", () => {
     memberModal.style.display = "flex";
 });
 
-// Gestion du bouton Retour à l'Accueil
+/**
+ * =========================
+ * 8. Bouton "Accueil"
+ * =========================
+ */
 homeButton.addEventListener("click", () => {
     window.location.href = "index.html";
 });
 
-// Fonction pour vérifier l'état de connexion et les permissions
+/**
+ * =========================
+ * 9. Vérifier la connexion
+ * =========================
+ */
 const checkConnectionAndPermissions = async () => {
     const isConnectedLocal = localStorage.getItem("isConnected");
     const currentUserLocal = localStorage.getItem("currentUser");
@@ -279,8 +339,6 @@ const checkConnectionAndPermissions = async () => {
     }
 
     const currentUser = JSON.parse(currentUserLocal);
-
-    // Mise à jour de l'interface utilisateur
     userStatusSpan.textContent = `Statut : Connecté (${currentUser.statut})`;
     userStatusSpan.classList.add("connected");
     authButton.textContent = "Déconnexion";
@@ -295,15 +353,16 @@ const checkConnectionAndPermissions = async () => {
     }
 };
 
-
-// Gestion de la déconnexion
+/**
+ * =========================
+ * 10. Déconnexion
+ * =========================
+ */
 authButton.addEventListener("click", () => {
     const isConnectedLocal = localStorage.getItem('isConnected') === 'true';
     if (!isConnectedLocal) {
-        // Redirection vers la page de connexion gérée par index.html
         window.location.href = "index.html";
     } else {
-        // Déconnexion
         localStorage.removeItem('isConnected');
         localStorage.removeItem('currentUser');
         userStatusSpan.textContent = "Statut : Non connecté";
@@ -312,11 +371,15 @@ authButton.addEventListener("click", () => {
         addMemberButton.style.display = "none";
         membersListDiv.innerHTML = "";
         alert("Vous avez été déconnecté.");
-        window.location.href = "index.html"; // Redirection après déconnexion
+        window.location.href = "index.html";
     }
 });
 
-// Initialisation complète
+/**
+ * =========================
+ * 11. Initialisation
+ * =========================
+ */
 (async () => {
     await checkConnectionAndPermissions();
 })();
