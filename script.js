@@ -1,5 +1,6 @@
 // Variables globales
 const showBooksButton = document.getElementById("show-books");
+const clearBooksButton = document.getElementById("clear-books");
 const booksListDiv = document.getElementById("books-list");
 const searchAuthorInput = document.getElementById("search-author");
 const searchAuthorButton = document.getElementById("search-author-btn");
@@ -12,6 +13,13 @@ const closeModalButton = document.getElementById("close-modal");
 const loginButton = document.getElementById("login-button");
 const authErrorDiv = document.getElementById("auth-error");
 const userStatusSpan = document.getElementById("user-status");
+const addBookSection = document.getElementById("add-book-section");
+const addBookButton = document.getElementById("add-book-button");
+const bookTitleInput = document.getElementById("book-title");
+const bookAuthorInput = document.getElementById("book-author");
+
+// Variable pour suivre le statut de connexion
+let isConnected = false;
 
 // Initialisation d'IndexedDB
 const initializeIndexedDB = async () => {
@@ -113,9 +121,7 @@ const searchData = async (db, storeName, field, query) => {
 
 // Affichage des résultats de recherche
 const displaySearchResults = (results, container) => {
-    booksListDiv.style.display = "none";
-
-    container.innerHTML = "";
+    container.innerHTML = ""; // Efface les résultats précédents
 
     if (results.length === 0) {
         container.innerHTML = "<p>Aucun résultat trouvé.</p>";
@@ -171,6 +177,7 @@ const displayBooks = async (db, container) => {
                     <th>Titre</th>
                     <th>Auteur</th>
                     <th>État</th>
+                    ${isConnected ? "<th>Actions</th>" : ""}
                 </tr>
             </thead>
         `;
@@ -184,17 +191,86 @@ const displayBooks = async (db, container) => {
                 <td class="${book.etat === "Disponible" ? "disponible" : "emprunte"}">
                     ${book.etat}
                 </td>
+                ${
+                    isConnected
+                        ? `<td><button class="delete-book" data-title="${book.titre}">Supprimer</button></td>`
+                        : ""
+                }
             `;
             tbody.appendChild(tr);
         });
 
         table.appendChild(tbody);
         container.appendChild(table);
+
+        if (isConnected) {
+            const deleteButtons = document.querySelectorAll(".delete-book");
+            deleteButtons.forEach((button) => {
+                button.addEventListener("click", async (event) => {
+                    const title = event.target.getAttribute("data-title");
+                    await deleteBook(db, title);
+                    await displayBooks(db, container); // Réaffiche les livres
+                });
+            });
+        }
     } catch (error) {
         console.error("Erreur lors de l'affichage des livres :", error);
         container.innerHTML = "<p>Erreur lors de la récupération des livres.</p>";
     }
 };
+
+// Effacer la liste des livres
+clearBooksButton.addEventListener("click", () => {
+    booksListDiv.innerHTML = ""; // Efface le contenu
+    booksListDiv.style.display = "none"; // Masque la liste si nécessaire
+    console.log("Liste des livres effacée.");
+});
+
+// Recherche par auteur
+searchAuthorButton.addEventListener("click", async () => {
+    const query = searchAuthorInput.value.trim();
+    if (!query) {
+        searchResultsDiv.innerHTML = "<p>Veuillez entrer un auteur pour rechercher.</p>";
+        return;
+    }
+
+    try {
+        const db = await initializeIndexedDB();
+        const results = await searchData(db, "books", "auteur", query);
+
+        // Masquer la liste complète
+        booksListDiv.style.display = "none";
+
+        // Afficher les résultats de recherche
+        displaySearchResults(results, searchResultsDiv);
+    } catch (error) {
+        console.error("Erreur lors de la recherche par auteur :", error);
+        searchResultsDiv.innerHTML = "<p>Erreur lors de la recherche. Veuillez réessayer.</p>";
+    }
+});
+
+// Recherche par titre
+searchTitleButton.addEventListener("click", async () => {
+    const query = searchTitleInput.value.trim();
+    if (!query) {
+        searchResultsDiv.innerHTML = "<p>Veuillez entrer un titre pour rechercher.</p>";
+        return;
+    }
+
+    try {
+        const db = await initializeIndexedDB();
+        const results = await searchData(db, "books", "titre", query);
+
+        // Masquer la liste complète
+        booksListDiv.style.display = "none";
+
+        // Afficher les résultats de recherche
+        displaySearchResults(results, searchResultsDiv);
+    } catch (error) {
+        console.error("Erreur lors de la recherche par titre :", error);
+        searchResultsDiv.innerHTML = "<p>Erreur lors de la recherche. Veuillez réessayer.</p>";
+    }
+});
 
 // Gestion de la modale de connexion
 authButton.addEventListener("click", () => {
@@ -228,8 +304,10 @@ loginButton.addEventListener("click", async () => {
         );
 
         if (user) {
+            isConnected = true;
             userStatusSpan.textContent = `Statut : Connecté (${user.statut})`;
             userStatusSpan.classList.add("connected");
+            addBookSection.style.display = "block"; // Affiche la section d'ajout
             authModal.style.display = "none";
         } else {
             authErrorDiv.textContent = "Identifiants incorrects.";
@@ -237,6 +315,27 @@ loginButton.addEventListener("click", async () => {
     } catch (error) {
         console.error("Erreur lors de la connexion :", error);
         authErrorDiv.textContent = "Une erreur est survenue. Veuillez réessayer.";
+    }
+});
+
+// Ajout d'un livre (bouton)
+addBookButton.addEventListener("click", async () => {
+    const title = bookTitleInput.value.trim();
+    const author = bookAuthorInput.value.trim();
+
+    if (!title || !author) {
+        console.error("Titre et auteur sont obligatoires.");
+        return;
+    }
+
+    try {
+        const db = await initializeIndexedDB();
+        await addBook(db, title, author);
+        bookTitleInput.value = "";
+        bookAuthorInput.value = "";
+        await displayBooks(db, booksListDiv); // Réaffiche les livres
+    } catch (error) {
+        console.error("Erreur lors de l'ajout du livre :", error);
     }
 });
 
@@ -261,23 +360,6 @@ loginButton.addEventListener("click", async () => {
     // Gestion des événements
     showBooksButton.addEventListener("click", () => displayBooks(db, booksListDiv));
 
-    searchAuthorButton.addEventListener("click", async () => {
-        const query = searchAuthorInput.value.trim();
-        if (!query) {
-            searchResultsDiv.innerHTML = "<p>Veuillez entrer un auteur pour rechercher.</p>";
-            return;
-        }
-        const results = await searchData(db, "books", "auteur", query);
-        displaySearchResults(results, searchResultsDiv);
-    });
-
-    searchTitleButton.addEventListener("click", async () => {
-        const query = searchTitleInput.value.trim();
-        if (!query) {
-            searchResultsDiv.innerHTML = "<p>Veuillez entrer un titre pour rechercher.</p>";
-            return;
-        }
-        const results = await searchData(db, "books", "titre", query);
-        displaySearchResults(results, searchResultsDiv);
-    });
+    // Cache les fonctionnalités d'ajout au démarrage
+    addBookSection.style.display = "none";
 })();
