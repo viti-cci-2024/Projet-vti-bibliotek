@@ -26,21 +26,22 @@
         }
         .top-bar button, .top-bar a {
             margin-left: 10px;
+            margin-left: 15px;
             padding: 8px 12px;
             border: none;
             border-radius: 4px;
-            background-color: #007bff;
+            background-color: #0055ff;
             color: white;
             cursor: pointer;
             text-decoration: none;
             font-size: 1em;
         }
         .top-bar button:hover, .top-bar a:hover {
-            background-color: #0056b3;
+            background-color: #ff8800;
         }
         /* Bouton Ajouter Membre */
         #add-member-button {
-            background-color: #28a745;
+            background-color: #8200ad;
             color: white;
             border: none;
             padding: 10px 15px;
@@ -50,7 +51,7 @@
             margin: 20px 0;
         }
         #add-member-button:hover {
-            background-color: #218838;
+            background-color: #460061;
         }
         /* Table des Membres */
         table {
@@ -146,11 +147,11 @@
             font-size: 0.9em;
         }
         .modal-content .modal-buttons .save-button {
-            background-color: #28a745;
+            background-color: #01b504;
             color: white;
         }
         .modal-content .modal-buttons .save-button:hover {
-            background-color: #218838;
+            background-color: #006a00;
         }
         .modal-content .modal-buttons .cancel-button {
             background-color: #6c757d;
@@ -164,8 +165,8 @@
 <body>
     <!-- Barre Supérieure -->
     <div class="top-bar">
-        <span id="user-status">Statut : Non connecté</span>
         <button id="auth-button">Déconnexion</button>
+        <span id="user-status" style="margin-left: 15px; color:rgb(131, 255, 131)">Statut : Non connecté</span>
         <a href="index.html" id="home-button">Accueil</a>
     </div>
 
