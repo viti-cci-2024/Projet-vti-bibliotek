@@ -305,6 +305,7 @@ const displaySearchResults = (results, container) => {
     }
 
     const table = document.createElement("table");
+    table.classList.add("table", "table-bordered", "table-striped", "table-hover", "table-sm"); // Applique les classes Bootstrap pour améliorer la présentation
     table.innerHTML = `
         <thead>
             <tr>
@@ -327,17 +328,14 @@ const displaySearchResults = (results, container) => {
             ${isConnected ? `<td>${book.emprunteur || "N/A"}</td>` : ""}
             ${
                 isConnected
-                ? `
+                ? ` 
                 <td>
-                    ${
-                        book.etat === "Disponible"
+                    ${book.etat === "Disponible"
                         ? `<button class="borrow-book" data-title="${book.titre}">Emprunter</button>`
-                        : `<button class="return-book" data-title="${book.titre}">Retourner</button>`
-                    }
+                        : `<button class="return-book" data-title="${book.titre}">Retourner</button>`}
                     <button class="delete-book" data-title="${book.titre}">Supprimer</button>
                     <button class="edit-book" data-title="${book.titre}">Modifier</button>
-                </td>
-                `
+                </td>`
                 : ""
             }
         `;
@@ -348,7 +346,7 @@ const displaySearchResults = (results, container) => {
     container.appendChild(table);
 
     if (isConnected) {
-        // Emprunter
+        // Emprunter, Retourner, Supprimer, Modifier (même logique que plus haut)
         const borrowButtons = document.querySelectorAll(".borrow-book");
         borrowButtons.forEach((button) => {
             button.addEventListener("click", async (event) => {
@@ -364,7 +362,6 @@ const displaySearchResults = (results, container) => {
             });
         });
 
-        // Retourner
         const returnButtons = document.querySelectorAll(".return-book");
         returnButtons.forEach((button) => {
             button.addEventListener("click", async (event) => {
@@ -380,7 +377,6 @@ const displaySearchResults = (results, container) => {
             });
         });
 
-        // Supprimer
         const deleteButtons = document.querySelectorAll(".delete-book");
         deleteButtons.forEach((button) => {
             button.addEventListener("click", async (event) => {
@@ -391,7 +387,6 @@ const displaySearchResults = (results, container) => {
             });
         });
 
-        // Modifier
         const editButtons = document.querySelectorAll(".edit-book");
         editButtons.forEach((button) => {
             button.addEventListener("click", async (event) => {
@@ -411,6 +406,7 @@ const displaySearchResults = (results, container) => {
     }
 };
 
+
 const displayBooks = async (db, container) => {
     try {
         searchResultsDiv.innerHTML = "";
@@ -425,6 +421,7 @@ const displayBooks = async (db, container) => {
         }
 
         const table = document.createElement("table");
+        table.classList.add("table", "table-bordered", "table-striped", "table-hover", "table-sm"); // Applique les classes Bootstrap pour améliorer la présentation
         table.innerHTML = `
             <thead>
                 <tr>
@@ -447,23 +444,19 @@ const displayBooks = async (db, container) => {
                 ${isConnected ? `<td>${book.emprunteur || "N/A"}</td>` : ""}
                 ${
                     isConnected
-                    ? `
+                    ? ` 
                     <td>
-                        ${
-                            book.etat === "Disponible"
+                        ${book.etat === "Disponible"
                             ? `<button class="borrow-book" data-title="${book.titre}">Emprunter</button>`
-                            : `<button class="return-book" data-title="${book.titre}">Retourner</button>`
-                        }
+                            : `<button class="return-book" data-title="${book.titre}">Retourner</button>`}
                         <button class="delete-book" data-title="${book.titre}">Supprimer</button>
                         <button class="edit-book" data-title="${book.titre}">Modifier</button>
-                    </td>
-                    `
+                    </td>`
                     : ""
                 }
             `;
             tbody.appendChild(tr);
         });
-        
 
         table.appendChild(tbody);
         container.appendChild(table);
@@ -528,6 +521,8 @@ const displayBooks = async (db, container) => {
         container.innerHTML = "<p>Erreur lors de la récupération des livres.</p>";
     }
 };
+
+
 
 /**
  * =========================
