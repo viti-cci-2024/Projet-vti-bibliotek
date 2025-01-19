@@ -280,50 +280,68 @@ const deleteMember = async (db, memberId) => {
     });
 };
 
-// Déconnexion
-authButton.addEventListener("click", () => {
-    // Supprimer les informations de connexion du localStorage
-    localStorage.removeItem("isConnected");
-    localStorage.removeItem("currentUser");
-
-    // Mettre à jour l'affichage du statut de l'utilisateur
-    userStatusSpan.textContent = "Statut : connecté";
-    userStatusSpan.classList.remove("connected");
-    authButton.textContent = "Connexion";
-
-    // Rediriger vers la page index.html
-    window.location.href = "index.html";
-});
-
 // =========================
 // Initialisation de la page
 // =========================
-initializeIndexedDB()
-    .then((db) => {
-        displayMembers(db);
+document.addEventListener("DOMContentLoaded", () => {
+    // Vérifier si l'utilisateur est connecté et s'il est administrateur
+    const isConnected = localStorage.getItem("isConnected");
+    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
 
-        // Bouton pour ajouter un membre
-        addMemberButton.addEventListener("click", () => {
-            isEditing = false;
-            memberModalTitle.textContent = "Ajouter un Membre";
-            memberNomInput.value = "";
-            memberPrenomInput.value = "";
-            memberStatutSelect.value = "Membre";
-            memberPasswordInput.value = "";
-            memberErrorDiv.textContent = "";
-            memberModalInstance.show(); // Ouvre la modale
+    if (!isConnected || !currentUser || currentUser.statut !== "Administrateur") {
+        // Afficher une alerte et rediriger l'utilisateur vers index.html
+        alert("Désolé, vous n'avez pas le droit d'accéder à cette page.");
+        window.location.href = "index.html";
+    } else {
+        // Afficher les informations de l'utilisateur connecté
+        console.log("Utilisateur connecté :", currentUser);
+        document.getElementById("user-status").textContent = `Statut : Connecté (${currentUser.nom} ${currentUser.prenom}, ${currentUser.statut})`;
+        document.getElementById("auth-button").textContent = "Déconnexion";
+    }
+
+    // Initialisation de la base de données et de l'affichage des membres
+    initializeIndexedDB()
+        .then((db) => {
+            displayMembers(db);
+
+            // Bouton pour ajouter un membre
+            addMemberButton.addEventListener("click", () => {
+                isEditing = false;
+                memberModalTitle.textContent = "Ajouter un Membre";
+                memberNomInput.value = "";
+                memberPrenomInput.value = "";
+                memberStatutSelect.value = "Membre";
+                memberPasswordInput.value = "";
+                memberErrorDiv.textContent = "";
+                memberModalInstance.show(); // Ouvre la modale
+            });
+
+            // Enregistrer ou mettre à jour un membre
+            saveMemberButton.addEventListener("click", () => {
+                saveMember(db);
+            });
+
+            // Fermer la modale
+            closeMemberModalButton.addEventListener("click", () => {
+                memberModalInstance.hide(); // Ferme la modale
+            });
+        })
+        .catch((error) => {
+            console.error("Erreur lors de l'initialisation de la base de données :", error);
         });
 
-        // Enregistrer ou mettre à jour un membre
-        saveMemberButton.addEventListener("click", () => {
-            saveMember(db);
-        });
+    // Déconnexion
+    authButton.addEventListener("click", () => {
+        // Supprimer les informations de connexion du localStorage
+        localStorage.removeItem("isConnected");
+        localStorage.removeItem("currentUser");
 
-        // Fermer la modale
-        closeMemberModalButton.addEventListener("click", () => {
-            memberModalInstance.hide(); // Ferme la modale
-        });
-    })
-    .catch((error) => {
-        console.error("Erreur lors de l'initialisation de la base de données :", error);
+        // Mettre à jour l'affichage du statut de l'utilisateur
+        userStatusSpan.textContent = "Statut : Non connecté";
+        userStatusSpan.classList.remove("connected");
+        authButton.textContent = "Connexion";
+
+        // Rediriger vers la page index.html
+        window.location.href = "index.html";
     });
+});
