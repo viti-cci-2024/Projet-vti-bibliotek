@@ -1,4 +1,6 @@
 // membres.js
+console.log("isConnected:", localStorage.getItem("isConnected"));
+console.log("currentUser:", localStorage.getItem("currentUser"));
 
 // Références aux éléments DOM
 const membersListDiv = document.getElementById("members-list");
@@ -260,31 +262,36 @@ homeButton.addEventListener("click", () => {
 
 // Fonction pour vérifier l'état de connexion et les permissions
 const checkConnectionAndPermissions = async () => {
-    const isConnectedLocal = localStorage.getItem('isConnected') === 'true';
-    const currentUserLocal = JSON.parse(localStorage.getItem('currentUser')) || {};
+    const isConnectedLocal = localStorage.getItem("isConnected");
+    const currentUserLocal = localStorage.getItem("currentUser");
 
-    console.log("Vérification de la connexion...");
-    console.log("isConnected:", isConnectedLocal);
-    console.log("currentUser:", currentUserLocal);
+    if (!isConnectedLocal || !currentUserLocal) {
+        console.log("Données manquantes dans localStorage :", {
+            isConnected: isConnectedLocal,
+            currentUser: currentUserLocal,
+        });
+        alert("Votre session a expiré ou vous n'êtes pas connecté. Retour à l'accueil.");
+        window.location.href = "index.html";
+        return;
+    }
 
-    if (!isConnectedLocal) {
-        alert('Vous devez être connecté pour accéder à cette page.');
-        window.location.href = 'index.html';
+    const currentUser = JSON.parse(currentUserLocal);
+
+    // Mise à jour de l'interface utilisateur
+    userStatusSpan.textContent = `Statut : Connecté (${currentUser.statut})`;
+    userStatusSpan.classList.add("connected");
+    authButton.textContent = "Déconnexion";
+
+    if (currentUser.statut === "Administrateur") {
+        addMemberButton.style.display = "inline-block";
+        const db = await initializeIndexedDB();
+        await displayMembers(db);
     } else {
-        userStatusSpan.textContent = `Statut : Connecté (${currentUserLocal.statut})`;
-        userStatusSpan.classList.add("connected");
-        authButton.textContent = "Déconnexion";
-
-        if (currentUserLocal.statut === "Administrateur") {
-            addMemberButton.style.display = "inline-block";
-            const db = await initializeIndexedDB();
-            await displayMembers(db);
-        } else {
-            addMemberButton.style.display = "none";
-            membersListDiv.innerHTML = "<p>Vous n'avez pas les permissions pour gérer les membres.</p>";
-        }
+        addMemberButton.style.display = "none";
+        membersListDiv.innerHTML = "<p>Vous n'avez pas les permissions pour gérer les membres.</p>";
     }
 };
+
 
 // Gestion de la déconnexion
 authButton.addEventListener("click", () => {

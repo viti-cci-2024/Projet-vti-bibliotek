@@ -608,13 +608,16 @@ loginButton.addEventListener("click", async () => {
         );
 
         if (user) {
+            localStorage.setItem("isConnected", "true");
+            localStorage.setItem("currentUser", JSON.stringify(user));
+            console.log("Utilisateur connecté :", user);
+
+            // Mettez à jour l'interface
             isConnected = true;
-            currentUser = { nom: user.nom, prenom: user.prenom, statut: user.statut };
-            addBookSection.style.display = "block"; // Affiche la section d'ajout
+            currentUser = user;
+            addBookSection.style.display = "block";
             authModal.style.display = "none";
-            updateAuthButton(); // Met à jour le bouton d'authentification
-            console.log("Utilisateur connecté :", currentUser);
-            await displayBooks(db, booksListDiv); // Affiche les livres après connexion
+            updateAuthButton();
         } else {
             authErrorDiv.textContent = "Identifiants incorrects.";
         }
@@ -623,6 +626,7 @@ loginButton.addEventListener("click", async () => {
         authErrorDiv.textContent = "Une erreur est survenue. Veuillez réessayer.";
     }
 });
+
 
 // Gestion de la modale de modification
 closeEditModalButton.addEventListener("click", () => {
