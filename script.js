@@ -18,9 +18,12 @@ const addBookButton = document.getElementById("add-book-button");
 const bookTitleInput = document.getElementById("book-title");
 const bookAuthorInput = document.getElementById("book-author");
 
+// **Nouveau : Référence au Bouton "Gestion des Membres"**
+const membersButton = document.getElementById("members-button");
+
 // Variables pour suivre l'utilisateur connecté
 let isConnected = false;
-let currentUser = { nom: "", prenom: "" };
+let currentUser = { nom: "", prenom: "", statut: "" };
 
 // Variables pour la modification de livre
 const editModal = document.getElementById("edit-modal");
@@ -31,14 +34,29 @@ const editAuthorInput = document.getElementById("edit-author");
 const editErrorDiv = document.getElementById("edit-error");
 let bookToEdit = null; // Objet du livre en cours de modification
 
-// Fonction pour mettre à jour le bouton d'authentification
+// Fonction pour mettre à jour le bouton d'authentification et le bouton de gestion des membres
 const updateAuthButton = () => {
     if (isConnected) {
         authButton.textContent = "Déconnexion";
+        membersButton.style.display = "inline-block"; // Affiche le bouton Gestion des Membres
     } else {
         authButton.textContent = "Connexion";
+        membersButton.style.display = "none"; // Cache le bouton Gestion des Membres
+    }
+    // Met à jour le statut de l'utilisateur dans la barre supérieure
+    if (isConnected) {
+        userStatusSpan.textContent = `Statut : Connecté (${currentUser.statut})`;
+        userStatusSpan.classList.add("connected");
+    } else {
+        userStatusSpan.textContent = "Statut : Non connecté";
+        userStatusSpan.classList.remove("connected");
     }
 };
+
+// **Nouveau : Gestionnaire d'Événement pour le Bouton "Gestion des Membres"**
+membersButton.addEventListener("click", () => {
+    window.location.href = "membres.html"; // Redirige vers la page membres.html
+});
 
 // Initialisation d'IndexedDB
 const initializeIndexedDB = async () => {
@@ -272,12 +290,12 @@ const displaySearchResults = (results, container) => {
             ${
                 isConnected
                     ? `
-                    <td>
-                        ${book.etat === "Disponible" ? `<button class="borrow-book" data-title="${book.titre}">Emprunter</button>` : `<button class="return-book" data-title="${book.titre}">Retourner</button>`}
-                        <button class="delete-book" data-title="${book.titre}">Supprimer</button>
-                        <button class="edit-book" data-title="${book.titre}">Modifier</button>
-                    </td>
-                    `
+                <td>
+                    ${book.etat === "Disponible" ? `<button class="borrow-book" data-title="${book.titre}">Emprunter</button>` : `<button class="return-book" data-title="${book.titre}">Retourner</button>`}
+                    <button class="delete-book" data-title="${book.titre}">Supprimer</button>
+                    <button class="edit-book" data-title="${book.titre}">Modifier</button>
+                </td>
+                `
                     : ""
             }
         `;
@@ -504,6 +522,7 @@ addBookButton.addEventListener("click", async () => {
 clearBooksButton.addEventListener("click", () => {
     booksListDiv.innerHTML = ""; // Efface le contenu
     booksListDiv.style.display = "none"; // Masque la liste si nécessaire
+    searchResultsDiv.innerHTML = ""; // Efface les résultats de recherche
     console.log("Liste des livres effacée.");
 });
 
@@ -552,9 +571,7 @@ authButton.addEventListener("click", () => {
     } else {
         // Si l'utilisateur est connecté, procéder à la déconnexion
         isConnected = false;
-        currentUser = { nom: "", prenom: "" };
-        userStatusSpan.textContent = "Statut : Non connecté";
-        userStatusSpan.classList.remove("connected");
+        currentUser = { nom: "", prenom: "", statut: "" };
         addBookSection.style.display = "none"; // Cache la section d'ajout
         booksListDiv.innerHTML = ""; // Optionnel: Efface la liste des livres affichés
         searchResultsDiv.innerHTML = ""; // Optionnel: Efface les résultats de recherche
@@ -592,9 +609,7 @@ loginButton.addEventListener("click", async () => {
 
         if (user) {
             isConnected = true;
-            currentUser = { nom: user.nom, prenom: user.prenom };
-            userStatusSpan.textContent = `Statut : Connecté (${user.statut})`;
-            userStatusSpan.classList.add("connected");
+            currentUser = { nom: user.nom, prenom: user.prenom, statut: user.statut };
             addBookSection.style.display = "block"; // Affiche la section d'ajout
             authModal.style.display = "none";
             updateAuthButton(); // Met à jour le bouton d'authentification
@@ -687,6 +702,6 @@ validateEditButton.addEventListener("click", async () => {
     // Cache les fonctionnalités d'ajout au démarrage
     addBookSection.style.display = "none";
 
-    // Initialise le texte du bouton d'authentification
+    // Initialise le texte du bouton d'authentification et la visibilité du bouton de gestion des membres
     updateAuthButton();
 })();
