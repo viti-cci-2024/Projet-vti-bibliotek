@@ -248,6 +248,10 @@ const saveMember = async (db) => {
         memberPasswordInput.value = "";
         memberErrorDiv.textContent = "";
         memberModalInstance.hide(); // Ferme la modale
+
+        // Rafraîchir immédiatement la liste des membres
+        displayMembers(db);
+
     } catch (error) {
         console.error("Erreur lors de l'enregistrement du membre :", error);
         displayErrors(["Erreur lors de l'enregistrement. Veuillez réessayer."], memberErrorDiv);
