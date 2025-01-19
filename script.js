@@ -156,6 +156,27 @@ const displaySearchResults = (results, container) => {
     container.appendChild(table);
 };
 
+// Ajout d'un livre
+const addBook = async (db, title, author) => {
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction("books", "readwrite");
+        const booksStore = transaction.objectStore("books");
+
+        const newBook = { titre: title, auteur: author, etat: "Disponible" };
+        const request = booksStore.add(newBook);
+
+        request.onsuccess = () => {
+            console.log("Livre ajouté :", newBook);
+            resolve();
+        };
+
+        request.onerror = () => {
+            console.error("Erreur lors de l'ajout du livre :", request.error);
+            reject(request.error);
+        };
+    });
+};
+
 // Affichage des livres
 const displayBooks = async (db, container) => {
     try {
@@ -177,7 +198,6 @@ const displayBooks = async (db, container) => {
                     <th>Titre</th>
                     <th>Auteur</th>
                     <th>État</th>
-                    ${isConnected ? "<th>Actions</th>" : ""}
                 </tr>
             </thead>
         `;
@@ -191,33 +211,38 @@ const displayBooks = async (db, container) => {
                 <td class="${book.etat === "Disponible" ? "disponible" : "emprunte"}">
                     ${book.etat}
                 </td>
-                ${
-                    isConnected
-                        ? `<td><button class="delete-book" data-title="${book.titre}">Supprimer</button></td>`
-                        : ""
-                }
             `;
             tbody.appendChild(tr);
         });
 
         table.appendChild(tbody);
         container.appendChild(table);
-
-        if (isConnected) {
-            const deleteButtons = document.querySelectorAll(".delete-book");
-            deleteButtons.forEach((button) => {
-                button.addEventListener("click", async (event) => {
-                    const title = event.target.getAttribute("data-title");
-                    await deleteBook(db, title);
-                    await displayBooks(db, container); // Réaffiche les livres
-                });
-            });
-        }
     } catch (error) {
         console.error("Erreur lors de l'affichage des livres :", error);
         container.innerHTML = "<p>Erreur lors de la récupération des livres.</p>";
     }
 };
+
+// Gestion du bouton "Ajouter un livre"
+addBookButton.addEventListener("click", async () => {
+    const title = bookTitleInput.value.trim();
+    const author = bookAuthorInput.value.trim();
+
+    if (!title || !author) {
+        console.error("Titre et auteur sont obligatoires.");
+        return;
+    }
+
+    try {
+        const db = await initializeIndexedDB();
+        await addBook(db, title, author); // Appel de la fonction
+        bookTitleInput.value = "";
+        bookAuthorInput.value = "";
+        await displayBooks(db, booksListDiv); // Réaffiche les livres
+    } catch (error) {
+        console.error("Erreur lors de l'ajout du livre :", error);
+    }
+});
 
 // Effacer la liste des livres
 clearBooksButton.addEventListener("click", () => {
@@ -315,27 +340,6 @@ loginButton.addEventListener("click", async () => {
     } catch (error) {
         console.error("Erreur lors de la connexion :", error);
         authErrorDiv.textContent = "Une erreur est survenue. Veuillez réessayer.";
-    }
-});
-
-// Ajout d'un livre (bouton)
-addBookButton.addEventListener("click", async () => {
-    const title = bookTitleInput.value.trim();
-    const author = bookAuthorInput.value.trim();
-
-    if (!title || !author) {
-        console.error("Titre et auteur sont obligatoires.");
-        return;
-    }
-
-    try {
-        const db = await initializeIndexedDB();
-        await addBook(db, title, author);
-        bookTitleInput.value = "";
-        bookAuthorInput.value = "";
-        await displayBooks(db, booksListDiv); // Réaffiche les livres
-    } catch (error) {
-        console.error("Erreur lors de l'ajout du livre :", error);
     }
 });
 
