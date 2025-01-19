@@ -99,7 +99,7 @@ const displayMembers = async (db) => {
     try {
         const members = await getAllMembers(db);
         console.log("Membres récupérés :", members);
-        membersListDiv.innerHTML = "";
+        membersListDiv.innerHTML = "";  // Réinitialise la liste
 
         if (members.length === 0) {
             membersListDiv.innerHTML = "<p>Aucun membre enregistré.</p>";
@@ -107,6 +107,7 @@ const displayMembers = async (db) => {
         }
 
         const table = document.createElement("table");
+        table.classList.add("table", "table-bordered");  // Ajoute les classes Bootstrap pour la table
         table.innerHTML = `
             <thead>
                 <tr>
@@ -128,8 +129,8 @@ const displayMembers = async (db) => {
                 <td>${member.prenom}</td>
                 <td>${member.statut}</td>
                 <td>
-                    <button class="action-button edit-button" data-id="${member.id}">Modifier</button>
-                    <button class="action-button delete-button" data-id="${member.id}">Supprimer</button>
+                    <button class="action-button edit-button btn btn-warning" data-id="${member.id}">Modifier</button>
+                    <button class="action-button delete-button btn btn-danger" data-id="${member.id}">Supprimer</button>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -174,7 +175,7 @@ const displayMembers = async (db) => {
 
                 try {
                     await deleteMember(db, memberId);
-                    await displayMembers(db); // Met à jour la liste des membres après suppression
+                    displayMembers(db); // Met à jour la liste des membres après suppression, sans recharger la page
                 } catch (error) {
                     console.error("Erreur lors de la suppression du membre :", error);
                 }
@@ -215,7 +216,7 @@ const saveMember = async (db) => {
                 statut,
                 motDePasse
             };
-            membersStore.put(updatedMember);
+            membersStore.put(updatedMember); // Met à jour le membre
             console.log("Membre mis à jour :", updatedMember);
         } else {
             const newMember = {
@@ -225,11 +226,11 @@ const saveMember = async (db) => {
                 motDePasse
             };
 
-            const request = membersStore.add(newMember); // Ajout du nouveau membre
+            const request = membersStore.add(newMember); // Ajoute le membre
 
             request.onsuccess = function () {
                 console.log("Nouveau membre ajouté avec succès :", newMember);
-                displayMembers(db); // On rafraîchit la liste des membres
+                displayMembers(db); // Rafraîchit la liste des membres après ajout
             };
 
             request.onerror = function (event) {
