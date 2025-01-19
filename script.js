@@ -735,17 +735,20 @@ validateEditButton.addEventListener("click", async () => {
  */
 const updateAuthButton = () => {
     if (isConnected) {
-        authButton.textContent = "Déconnexion";
+        authButton.innerHTML = '<i class="bi bi-box-arrow-right"></i> Déconnexion';
         membersButton.style.display = "inline-block";
-        userStatusSpan.textContent = `Statut : Connecté (${currentUser.statut})`;
+        userStatusSpan.innerHTML = `🟢 Statut : Connecté (${currentUser.statut})`;
         userStatusSpan.classList.add("connected");
+        userStatusSpan.classList.remove("disconnected");
     } else {
-        authButton.textContent = "Connexion";
+        authButton.innerHTML = '<i class="bi bi-person"></i> Connexion';
         membersButton.style.display = "none";
-        userStatusSpan.textContent = "Statut : Non connecté";
+        userStatusSpan.innerHTML = "🔴 Statut : Non connecté";
+        userStatusSpan.classList.add("disconnected");
         userStatusSpan.classList.remove("connected");
     }
 };
+
 
 /**
  * =========================
