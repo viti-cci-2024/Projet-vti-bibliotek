@@ -1,5 +1,3 @@
-// membres.js
-
 // Références DOM
 const membersListDiv = document.getElementById("members-list");
 const addMemberButton = document.getElementById("add-member-button");
@@ -17,9 +15,12 @@ const closeMemberModalButton = document.getElementById("close-member-modal");
 let isEditing = false;
 let memberToEdit = null;
 
+// Initialiser la modale avec Bootstrap
+const memberModalInstance = new bootstrap.Modal(memberModal);
+
 /**
  * =========================
- * 1. NOUVEAU : Fonctions de validation & affichage d’erreurs
+ * 1. Fonction de validation & affichage d’erreurs
  * =========================
  */
 function validateMemberForm(nom, prenom, statut, motDePasse) {
@@ -63,7 +64,6 @@ const initializeIndexedDB = async () => {
             const db = event.target.result;
             if (!db.objectStoreNames.contains("members")) {
                 db.createObjectStore("members", { keyPath: "id", autoIncrement: true });
-                console.log("Le magasin d'objets 'members' a été créé.");
             }
         };
 
@@ -154,7 +154,7 @@ const displayMembers = async (db) => {
                     memberStatutSelect.value = member.statut;
                     memberPasswordInput.value = member.motDePasse || "";
                     memberErrorDiv.textContent = "";
-                    memberModal.style.display = "flex";
+                    memberModalInstance.show(); // Ouvre la modale
                 }
             });
         });
@@ -188,7 +188,7 @@ const displayMembers = async (db) => {
 
 /**
  * =========================
- * 4. Ajout / modification d'un membre
+ * 4. Ajouter / modifier un membre
  * =========================
  */
 const saveMember = async (db) => {
@@ -229,7 +229,6 @@ const saveMember = async (db) => {
 
             request.onsuccess = function () {
                 console.log("Nouveau membre ajouté avec succès :", newMember);
-                // Le membre a été ajouté avec un ID généré automatiquement
                 displayMembers(db); // On rafraîchit la liste des membres
             };
 
@@ -247,7 +246,7 @@ const saveMember = async (db) => {
         memberStatutSelect.value = "Membre";
         memberPasswordInput.value = "";
         memberErrorDiv.textContent = "";
-        memberModal.style.display = "none";
+        memberModalInstance.hide(); // Ferme la modale
     } catch (error) {
         console.error("Erreur lors de l'enregistrement du membre :", error);
         displayErrors(["Erreur lors de l'enregistrement. Veuillez réessayer."], memberErrorDiv);
@@ -290,7 +289,7 @@ initializeIndexedDB()
             memberStatutSelect.value = "Membre";
             memberPasswordInput.value = "";
             memberErrorDiv.textContent = "";
-            memberModal.style.display = "flex";
+            memberModalInstance.show(); // Ouvre la modale
         });
 
         // Enregistrer ou mettre à jour un membre
@@ -300,7 +299,7 @@ initializeIndexedDB()
 
         // Fermer la modale
         closeMemberModalButton.addEventListener("click", () => {
-            memberModal.style.display = "none";
+            memberModalInstance.hide(); // Ferme la modale
         });
     })
     .catch((error) => {
