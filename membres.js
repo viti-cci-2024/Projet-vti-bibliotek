@@ -4,23 +4,23 @@
 const membersListDiv = document.getElementById("members-list");
 const addMemberButton = document.getElementById("add-member-button");
 const memberModal = document.getElementById("member-modal");
-const closeMemberModalButton = document.getElementById("close-member-modal");
-const saveMemberButton = document.getElementById("save-member-button");
 const memberModalTitle = document.getElementById("member-modal-title");
 const memberErrorDiv = document.getElementById("member-error");
 const memberNomInput = document.getElementById("member-nom");
 const memberPrenomInput = document.getElementById("member-prenom");
 const memberStatutSelect = document.getElementById("member-statut");
 const memberPasswordInput = document.getElementById("member-password");
-const homeButton = document.getElementById("home-button");
-const authButton = document.getElementById("auth-button");
+const saveMemberButton = document.getElementById("save-member-button");
+const closeMemberModalButton = document.getElementById("close-member-modal");
 const userStatusSpan = document.getElementById("user-status");
+const authButton = document.getElementById("auth-button");
+const homeButton = document.getElementById("home-button"); // Bouton d'accueil
 
-// Variables pour suivre l'état de la modale
+// Variables pour suivre l'état de la modale et l'édition
 let isEditing = false;
 let memberToEdit = null;
 
-// Fonction pour initialiser et accéder à IndexedDB (similaire à script.js)
+// Fonction pour initialiser et accéder à IndexedDB
 const initializeIndexedDB = async () => {
     return new Promise((resolve, reject) => {
         const request = indexedDB.open("Bibliotheque", 1);
@@ -37,7 +37,7 @@ const initializeIndexedDB = async () => {
         };
 
         request.onsuccess = () => {
-            console.log("Base IndexedDB initialisée pour `membres.html`.");
+            console.log("IndexedDB initialisée pour `membres.html`.");
             resolve(request.result);
         };
 
@@ -65,6 +65,7 @@ const getAllMembers = async (db) => {
 const displayMembers = async (db) => {
     try {
         const members = await getAllMembers(db);
+        console.log("Membres récupérés :", members);
         membersListDiv.innerHTML = ""; // Efface la liste existante
 
         if (members.length === 0) {
@@ -94,8 +95,8 @@ const displayMembers = async (db) => {
                 <td>${member.prenom}</td>
                 <td>${member.statut}</td>
                 <td>
-                    <button class="edit-member" data-id="${member.id}">Modifier</button>
-                    <button class="delete-member" data-id="${member.id}">Supprimer</button>
+                    <button class="action-button edit-button" data-id="${member.id}">Modifier</button>
+                    <button class="action-button delete-button" data-id="${member.id}">Supprimer</button>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -105,11 +106,12 @@ const displayMembers = async (db) => {
         membersListDiv.appendChild(table);
 
         // Ajouter des gestionnaires d'événements pour les boutons Modifier et Supprimer
-        const editButtons = document.querySelectorAll(".edit-member");
+        const editButtons = document.querySelectorAll(".edit-button");
         editButtons.forEach((button) => {
             button.addEventListener("click", async (event) => {
                 const memberId = parseInt(event.target.getAttribute("data-id"));
                 const member = members.find((m) => m.id === memberId);
+                console.log(`Modifier le membre ID: ${memberId}`, member);
                 if (member) {
                     isEditing = true;
                     memberToEdit = member;
@@ -124,10 +126,11 @@ const displayMembers = async (db) => {
             });
         });
 
-        const deleteButtons = document.querySelectorAll(".delete-member");
+        const deleteButtons = document.querySelectorAll(".delete-button");
         deleteButtons.forEach((button) => {
             button.addEventListener("click", async (event) => {
                 const memberId = parseInt(event.target.getAttribute("data-id"));
+                console.log(`Supprimer le membre ID: ${memberId}`);
                 if (confirm("Êtes-vous sûr de vouloir supprimer ce membre ?")) {
                     await deleteMember(db, memberId);
                     await displayMembers(db); // Rafraîchit la liste des membres
@@ -255,23 +258,55 @@ homeButton.addEventListener("click", () => {
     window.location.href = "index.html";
 });
 
-// Vérification de l'état de connexion lors du chargement de la page
-const checkConnection = async () => {
-    // Utilisation de localStorage pour vérifier l'état de connexion
-    const storedIsConnected = localStorage.getItem('isConnected') === 'true';
-    const storedUser = JSON.parse(localStorage.getItem('currentUser')) || { nom: "", prenom: "", statut: "" };
+// Fonction pour vérifier l'état de connexion et les permissions
+const checkConnectionAndPermissions = async () => {
+    const isConnectedLocal = localStorage.getItem('isConnected') === 'true';
+    const currentUserLocal = JSON.parse(localStorage.getItem('currentUser')) || {};
 
-    if (!storedIsConnected) {
+    console.log("Vérification de la connexion...");
+    console.log("isConnected:", isConnectedLocal);
+    console.log("currentUser:", currentUserLocal);
+
+    if (!isConnectedLocal) {
         alert('Vous devez être connecté pour accéder à cette page.');
         window.location.href = 'index.html';
     } else {
-        document.getElementById("user-status").textContent = `Statut : Connecté (${storedUser.statut})`;
+        userStatusSpan.textContent = `Statut : Connecté (${currentUserLocal.statut})`;
+        userStatusSpan.classList.add("connected");
+        authButton.textContent = "Déconnexion";
+
+        if (currentUserLocal.statut === "Administrateur") {
+            addMemberButton.style.display = "inline-block";
+            const db = await initializeIndexedDB();
+            await displayMembers(db);
+        } else {
+            addMemberButton.style.display = "none";
+            membersListDiv.innerHTML = "<p>Vous n'avez pas les permissions pour gérer les membres.</p>";
+        }
     }
 };
 
+// Gestion de la déconnexion
+authButton.addEventListener("click", () => {
+    const isConnectedLocal = localStorage.getItem('isConnected') === 'true';
+    if (!isConnectedLocal) {
+        // Redirection vers la page de connexion gérée par index.html
+        window.location.href = "index.html";
+    } else {
+        // Déconnexion
+        localStorage.removeItem('isConnected');
+        localStorage.removeItem('currentUser');
+        userStatusSpan.textContent = "Statut : Non connecté";
+        userStatusSpan.classList.remove("connected");
+        authButton.textContent = "Connexion";
+        addMemberButton.style.display = "none";
+        membersListDiv.innerHTML = "";
+        alert("Vous avez été déconnecté.");
+        window.location.href = "index.html"; // Redirection après déconnexion
+    }
+});
+
 // Initialisation complète
 (async () => {
-    await checkConnection();
-    const db = await initializeIndexedDB();
-    await displayMembers(db);
+    await checkConnectionAndPermissions();
 })();
