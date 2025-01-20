@@ -562,8 +562,7 @@ addBookButton.addEventListener("click", async () => {
   const title = bookTitleInput.value.trim();
   const author = bookAuthorInput.value.trim();
 
-  // Ici, tu pourrais créer un validateBookForm(...) pour plus de précision
-  // Exemple minimal :
+
   if (!title || !author) {
     console.error("Titre et auteur sont obligatoires.");
     return;
@@ -667,7 +666,7 @@ loginButton.addEventListener("click", async () => {
   const password = document.getElementById("auth-password").value;
 
   // ==============================
-  // NOUVEAU : utilisation de validateLoginForm
+  // utilisation de validateLoginForm
   // ==============================
   const errors = validateLoginForm(name, firstname, password);
   if (errors.length > 0) {
